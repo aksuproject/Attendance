@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ME Attendance - Secure Admin Cloud</title>
+    <title>ME Attendance - Smart Sorting Cloud</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
@@ -54,8 +54,8 @@
     </div>
 
     <div class="sort-bar">
-        <button id="sortName" class="btn-sort active" onclick="setHighlight('name')">Highlight Name</button>
-        <button id="sortCode" class="btn-sort" onclick="setHighlight('id')">Highlight Code</button>
+        <button id="sortName" class="btn-sort active" onclick="updateView('name')">Highlight Name (A-Z)</button>
+        <button id="sortCode" class="btn-sort" onclick="updateView('id')">Highlight Code (Sequence)</button>
     </div>
 
     <div class="list-header"><div class="col-sn">SN</div><div class="col-info">Student Details</div><div class="col-status">Status (P/A)</div></div>
@@ -68,14 +68,13 @@
             <h3 style="margin:0;">Recent History</h3>
             <input type="date" id="filterDate" onchange="fetchHistory(true)">
         </div>
-        <div id="logsView">History Load Ho Rahi Hai...</div>
+        <div id="logsView">Loading...</div>
     </div>
 
     <div class="admin-panel" id="adminSection">
-        <h4>Admin Access (Protected)</h4>
-        <input type="password" id="adminPass" placeholder="••••••••" style="padding:8px; border-radius:4px; border:none; margin-right:10px; width: 150px; text-align:center;">
+        <h4>Admin Panel</h4>
+        <input type="password" id="adminPass" placeholder="Password" style="padding:8px; border-radius:4px; border:none; margin-right:10px; width: 150px;">
         <button onclick="adminLogin()" style="padding:8px 15px; background:#2c3e50; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Login</button>
-        <p id="adminStatus" style="font-size:10px; margin-top:10px; color:#bdc3c7;">Enter password to unlock Edit/Delete</p>
     </div>
 </div>
 
@@ -138,27 +137,28 @@
     window.onload = () => {
         const d = new Date().toISOString().split('T')[0];
         document.getElementById('classDate').value = d;
-        students.sort((a,b) => a.id.localeCompare(b.id));
-        renderList();
+        updateView('name'); // Default A-Z sorting
         fetchHistory(false);
     };
 
     function adminLogin() {
-        const passInput = document.getElementById('adminPass');
-        if(passInput.value === "siar@2020") {
+        if(document.getElementById('adminPass').value === "siar@2020") {
             isAdmin = true;
             document.getElementById('adminSection').style.background = "#27ae60";
-            document.getElementById('adminStatus').innerText = "Admin Access Granted ✅";
-            passInput.value = ""; // Clear password after login
             fetchHistory(false);
-            alert("Admin features (Edit/Delete) unlocked.");
-        } else alert("Mafi chahte hain, galat password!");
+            alert("Admin Access Granted");
+        } else alert("Galat Password");
     }
 
-    function setHighlight(mode) {
+    function updateView(mode) {
         highlightMode = mode;
         document.getElementById('sortName').className = (mode === 'name') ? 'btn-sort active' : 'btn-sort';
         document.getElementById('sortCode').className = (mode === 'id') ? 'btn-sort active' : 'btn-sort';
+        
+        // Sorting Logic
+        if(mode === 'name') students.sort((a,b) => a.name.localeCompare(b.name));
+        else students.sort((a,b) => a.id.localeCompare(b.id));
+        
         renderList();
     }
 
@@ -172,7 +172,7 @@
                     <span class="${highlightMode==='id'?'focus-main':'focus-sub'}">${s.id}</span>
                 </div>
                 <div class="col-status">
-                    <label class="radio-btn"><input type="radio" name="st_${s.id}" value="P"><span style="color:var(--present)">P</span></label>
+                    <label class="radio-btn"><input type="radio" name="st_${s.id}" value="P"><span>P</span></label>
                     <label class="radio-btn"><input type="radio" name="st_${s.id}" value="A" checked><span>A</span></label>
                 </div>
             </div>
@@ -181,7 +181,7 @@
 
     function pushToCloud() {
         const date = document.getElementById('classDate').value;
-        const sub = document.getElementById('subject').value || "Unnamed Subject";
+        const sub = document.getElementById('subject').value || "Unnamed";
         const type = document.getElementById('classType').value;
         let pL = [], aL = [];
         
@@ -195,13 +195,11 @@
 
         if(editingKey) {
             database.ref('attendance').child(editingKey).set(record).then(() => {
-                alert("Attendance Record Updated Successfully!");
-                resetForm();
+                alert("Updated!"); resetForm();
             });
         } else {
             database.ref('attendance').push(record).then(() => {
-                alert("Attendance Saved to Cloud!");
-                resetForm();
+                alert("Saved!"); resetForm();
             });
         }
     }
@@ -222,7 +220,7 @@
         query.on('value', snap => {
             const data = snap.val();
             const view = document.getElementById('logsView');
-            if(!data) { view.innerHTML = "<center>Record nahi mila.</center>"; return; }
+            if(!data) { view.innerHTML = "No logs."; return; }
             view.innerHTML = Object.keys(data).reverse().map(k => {
                 const log = data[k];
                 return `<div class="history-card">
@@ -245,50 +243,36 @@
         });
     }
 
-    // EDIT FUNCTION Jismein table load hogi
     function editLog(key) {
         database.ref('attendance').child(key).once('value', snap => {
             const log = snap.val();
             editingKey = key;
-            
             document.getElementById('classDate').value = log.date;
             document.getElementById('subject').value = log.sub;
             document.getElementById('classType').value = log.type;
             
             const btn = document.getElementById('mainSaveBtn');
-            btn.innerText = "UPDATE DATA (" + log.date + ")";
+            btn.innerText = "UPDATE RECORD (" + log.date + ")";
             btn.style.background = "#f39c12";
 
-            // Pehle sabko Absent mark karo
             document.querySelectorAll('input[type="radio"][value="A"]').forEach(r => r.checked = true);
-
-            // Ab jo Present the unhe table mein mark karo
             if(log.pL) {
                 log.pL.forEach(student => {
-                    // Match by Full ID
                     let r = document.querySelector(`input[name="st_${student.id}"][value="P"]`);
-                    // Fallback match by Name
-                    if(!r) {
-                        const target = students.find(s => s.name === student.n);
-                        if(target) r = document.querySelector(`input[name="st_${target.id}"][value="P"]`);
-                    }
                     if(r) r.checked = true;
                 });
             }
-            
             window.scrollTo({top: 0, behavior: 'smooth'});
-            alert("Attendance Data Load Ho Gaya Hai. Ab Edit Kar Sakte Hain.");
         });
     }
 
-    function deleteLog(key) { if(confirm("Kya aap sach mein ise delete karna chahte hain?")) database.ref('attendance').child(key).remove(); }
+    function deleteLog(key) { if(confirm("Delete Permanent?")) database.ref('attendance').child(key).remove(); }
     function renderTags(list, type) { if(!list) return "None"; return list.map(item => `<span class="tag ${type}-tag" data-full="${item.n}" data-code="${item.c}">${item.n}</span>`).join(''); }
     function toggleNames(btn) {
-        const body = btn.parentElement;
-        const tags = body.querySelectorAll('.tag');
-        const isCodeMode = btn.innerText === "Show Names";
-        tags.forEach(t => t.innerText = isCodeMode ? t.getAttribute('data-full') : t.getAttribute('data-code'));
-        btn.innerText = isCodeMode ? "Show Codes" : "Show Names";
+        const tags = btn.parentElement.querySelectorAll('.tag');
+        const isCode = btn.innerText === "Show Names";
+        tags.forEach(t => t.innerText = isCode ? t.getAttribute('data-full') : t.getAttribute('data-code'));
+        btn.innerText = isCode ? "Show Codes" : "Show Names";
     }
     function toggleBody(el) { const b = el.parentElement.nextElementSibling; b.style.display = (b.style.display==='block'?'none':'block'); }
 </script>
