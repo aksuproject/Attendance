@@ -3,78 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ME Attendance - Smart Sorting Cloud</title>
+    <title>ME Attendance Cloud</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         :root { --present: #27ae60; --absent: #e74c3c; --primary: #2c3e50; --bg: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; font-size: 12px; }
         .container { max-width: 800px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        #adminPanel { display: none; border-bottom: 3px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
         .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
         .input-group { display: flex; flex-direction: column; }
         label { font-weight: bold; font-size: 10px; color: #555; }
         input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
+        
         .sort-bar { display: flex; gap: 8px; margin-bottom: 15px; }
         .btn-sort { flex: 1; padding: 10px; border: 1px solid var(--primary); background: white; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; }
         .btn-sort.active { background: var(--primary); color: white; }
+        
         .list-header { display: flex; background: #eee; padding: 10px; font-weight: bold; border-radius: 4px; margin-bottom: 5px; }
         .list-row { display: flex; align-items: center; padding: 10px 5px; border-bottom: 1px solid #f1f1f1; }
         .col-sn { width: 10%; }
         .col-info { width: 55%; display: flex; flex-direction: column; line-height: 1.3; }
         .col-status { width: 35%; display: flex; justify-content: space-around; }
+
         .focus-main { font-size: 14px; font-weight: 800; color: #000; }
         .focus-sub { font-size: 10px; opacity: 0.7; }
-        .radio-btn { cursor: pointer; display: flex; align-items: center; gap: 3px; font-weight: bold; }
-        .radio-btn input { width: 18px; height: 18px; cursor: pointer; }
-        .history-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; position: relative; }
+        .radio-btn { cursor: pointer; font-weight: bold; }
+
+        .history-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; }
         .card-header { padding: 12px; cursor: pointer; display: flex; justify-content: space-between; font-weight: bold; align-items: center; }
-        .header-content { flex: 1; display: flex; justify-content: space-between; align-items: center; margin: 0 10px; }
         .card-body { padding: 12px; display: none; background: #fafafa; border-top: 1px solid #eee; }
-        .view-toggle { background: #e0e0e0; border: none; padding: 5px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; float: right; }
-        .tag { display: inline-block; padding: 3px 6px; border-radius: 4px; margin: 2px; font-size: 10px; font-weight: 500; }
-        .p-tag { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
-        .a-tag { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        .type-badge { background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; }
+        
         .btn-submit { background: var(--present); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 20px; font-size: 16px; }
         .btn-edit { background: #f39c12; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: bold; }
         .btn-delete { background: none; border: none; cursor: pointer; font-size: 16px; color: #bbb; }
-        .admin-panel { margin-top: 40px; padding: 20px; background: #34495e; color: white; border-radius: 12px; text-align: center; }
+        
+        .login-footer { margin-top: 30px; padding: 20px; background: #eee; border-radius: 12px; text-align: center; }
+        .tag { display: inline-block; padding: 3px 6px; border-radius: 4px; margin: 2px; font-size: 10px; }
+        .p-tag { background: #e8f5e9; color: #2e7d32; }
+        .a-tag { background: #ffebee; color: #c62828; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h2 style="text-align:center; color:var(--primary); margin:0 0 15px 0;">Mechanical Attendance Cloud</h2></header>
+    <h2 style="text-align:center; color:var(--primary);">Attendance</h2>
 
-    <div class="controls">
-        <div class="input-group"><label>Class Date</label><input type="date" id="classDate"></div>
-        <div class="input-group"><label>Subject</label><input type="text" id="subject" placeholder="Subject"></div>
-        <div class="input-group"><label>Type</label>
-            <select id="classType"><option>Lecture</option><option>Practical</option><option>Extra Class</option></select>
+    <div id="adminPanel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="color: green; font-weight: bold;">Editor Mode</span>
+            <button onclick="logout()" style="background: #e74c3c; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">Logout</button>
         </div>
-    </div>
 
-    <div class="sort-bar">
-        <button id="sortName" class="btn-sort active" onclick="updateView('name')">Highlight Name (A-Z)</button>
-        <button id="sortCode" class="btn-sort" onclick="updateView('id')">Highlight Code (Sequence)</button>
-    </div>
-
-    <div class="list-header"><div class="col-sn">SN</div><div class="col-info">Student Details</div><div class="col-status">Status (P/A)</div></div>
-    <div id="listBody"></div>
-
-    <button type="button" class="btn-submit" id="mainSaveBtn" onclick="pushToCloud()">Finalize & Save to Cloud</button>
-
-    <div style="margin-top:30px; border-top:2px solid #ddd; padding-top:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h3 style="margin:0;">Recent History</h3>
-            <input type="date" id="filterDate" onchange="fetchHistory(true)">
+        <div class="controls">
+            <div class="input-group"><label>Class Date</label><input type="date" id="classDate"></div>
+            <div class="input-group"><label>Subject</label><input type="text" id="subject" placeholder="Subject"></div>
+            <div class="input-group"><label>Type</label>
+                <select id="classType">
+                    <option value="Lecture">Lecture</option>
+                    <option value="Lab">Lab</option>
+                    <option value="Extra Class">Extra Class</option>
+                </select>
+            </div>
         </div>
-        <div id="logsView">Loading...</div>
+
+        <div class="sort-bar">
+            <button id="sortName" class="btn-sort active" onclick="updateView('name')">Highlight Name</button>
+            <button id="sortCode" class="btn-sort" onclick="updateView('id')">Highlight Code</button>
+        </div>
+
+        <div class="list-header"><div class="col-sn">SN</div><div class="col-info">Student Details</div><div class="col-status">Status</div></div>
+        <div id="listBody"></div>
+
+        <button type="button" class="btn-submit" id="mainSaveBtn" onclick="pushToCloud()">Finalize & Save</button>
     </div>
 
-    <div class="admin-panel" id="adminSection">
-        <h4>Admin Panel</h4>
-        <input type="password" id="adminPass" placeholder="Password" style="padding:8px; border-radius:4px; border:none; margin-right:10px; width: 150px;">
-        <button onclick="adminLogin()" style="padding:8px 15px; background:#2c3e50; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Login</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3 style="margin:0;">History Search</h3>
+        <input type="date" id="filterDate" onchange="fetchHistory(true)" style="padding: 5px;">
+    </div>
+    <div id="logsView">Loading logs...</div>
+
+    <div class="login-footer" id="loginBox">
+        <p>Login to add or edit attendance</p>
+        <input type="password" id="adminPass" placeholder="••••••••" style="padding:8px; border-radius:4px; border:1px solid #ccc; margin-bottom: 10px;"><br>
+        <button onclick="login()" style="padding:8px 20px; background:var(--primary); color:white; border:none; border-radius:4px; cursor:pointer;">Admin Login</button>
     </div>
 </div>
 
@@ -91,7 +106,7 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    let highlightMode = 'name', isAdmin = false, editingKey = null;
+    let highlightMode = 'name', isAdmin = false, editingKey = null, loadedPres = [];
     let students = [
         {sn: 1, id: "B2555R10102001", name: "ABHISHEK KUMAR"}, {sn: 2, id: "B2555R10102002", name: "SANJEEV KUMAR"},
         {sn: 3, id: "B2555R10102005", name: "SATEESH KUMAR CHAUDHARI"}, {sn: 4, id: "B2555R10102006", name: "AJEET SINGH"},
@@ -135,146 +150,127 @@
     ];
 
     window.onload = () => {
-        const d = new Date().toISOString().split('T')[0];
-        document.getElementById('classDate').value = d;
-        updateView('name'); // Default A-Z sorting
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('classDate').value = today;
+        updateView('name');
         fetchHistory(false);
     };
 
-    function adminLogin() {
+    function login() {
         if(document.getElementById('adminPass').value === "siar@2020") {
             isAdmin = true;
-            document.getElementById('adminSection').style.background = "#27ae60";
+            document.getElementById('adminPanel').style.display = "block";
+            document.getElementById('loginBox').style.display = "none";
             fetchHistory(false);
-            alert("Admin Access Granted");
-        } else alert("Galat Password");
+            alert("Admin Access Unlocked");
+        } else alert("Mafi chahte hain, galat password!");
+    }
+
+    function logout() {
+        isAdmin = false;
+        document.getElementById('adminPanel').style.display = "none";
+        document.getElementById('loginBox').style.display = "block";
+        fetchHistory(false);
     }
 
     function updateView(mode) {
         highlightMode = mode;
         document.getElementById('sortName').className = (mode === 'name') ? 'btn-sort active' : 'btn-sort';
         document.getElementById('sortCode').className = (mode === 'id') ? 'btn-sort active' : 'btn-sort';
-        
-        // Sorting Logic
         if(mode === 'name') students.sort((a,b) => a.name.localeCompare(b.name));
         else students.sort((a,b) => a.id.localeCompare(b.id));
-        
         renderList();
     }
 
     function renderList() {
-        const list = document.getElementById('listBody');
-        list.innerHTML = students.map(s => `
-            <div class="list-row">
+        const listBody = document.getElementById('listBody');
+        listBody.innerHTML = students.map(s => {
+            const isP = loadedPres.includes(s.id) || loadedPres.includes(s.name);
+            return `<div class="list-row">
                 <div class="col-sn">${s.sn}</div>
                 <div class="col-info">
                     <span class="${highlightMode==='name'?'focus-main':'focus-sub'}">${s.name}</span>
                     <span class="${highlightMode==='id'?'focus-main':'focus-sub'}">${s.id}</span>
                 </div>
                 <div class="col-status">
-                    <label class="radio-btn"><input type="radio" name="st_${s.id}" value="P"><span>P</span></label>
-                    <label class="radio-btn"><input type="radio" name="st_${s.id}" value="A" checked><span>A</span></label>
+                    <label class="radio-btn"><input type="radio" name="st_${s.id}" value="P" ${isP?'checked':''}> P</label>
+                    <label class="radio-btn"><input type="radio" name="st_${s.id}" value="A" ${!isP?'checked':''}> A</label>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     }
 
     function pushToCloud() {
         const date = document.getElementById('classDate').value;
-        const sub = document.getElementById('subject').value || "Unnamed";
+        const sub = document.getElementById('subject').value || "No Subject";
         const type = document.getElementById('classType').value;
         let pL = [], aL = [];
-        
         students.forEach(s => {
-            const val = document.querySelector(`input[name="st_${s.id}"]:checked`).value;
-            let entry = { n: s.name, c: s.id.slice(-4), id: s.id };
-            val === 'P' ? pL.push(entry) : aL.push(entry);
+            const isP = document.querySelector(`input[name="st_${s.id}"]:checked`).value === 'P';
+            let entry = { n: s.name, id: s.id, c: s.id.slice(-4) };
+            isP ? pL.push(entry) : aL.push(entry);
         });
-
-        const record = { date, sub, type, pL, aL, ts: Date.now() };
-
-        if(editingKey) {
-            database.ref('attendance').child(editingKey).set(record).then(() => {
-                alert("Updated!"); resetForm();
-            });
-        } else {
-            database.ref('attendance').push(record).then(() => {
-                alert("Saved!"); resetForm();
-            });
-        }
+        const data = { date, sub, type, pL, aL, ts: Date.now() };
+        if(editingKey) database.ref('attendance').child(editingKey).set(data).then(() => { alert("Record updated!"); resetForm(); });
+        else database.ref('attendance').push(data).then(() => { alert("Saved!"); resetForm(); });
     }
 
     function resetForm() {
-        editingKey = null;
-        document.getElementById('mainSaveBtn').innerText = "Finalize & Save to Cloud";
+        editingKey = null; loadedPres = [];
+        document.getElementById('mainSaveBtn').innerText = "Finalize & Save";
         document.getElementById('mainSaveBtn').style.background = "var(--present)";
         document.getElementById('subject').value = "";
-        document.querySelectorAll('input[type="radio"][value="A"]').forEach(r => r.checked = true);
+        updateView(highlightMode);
     }
 
-    function fetchHistory(byDate) {
+    function fetchHistory(filter) {
+        let ref = database.ref('attendance');
         const fDate = document.getElementById('filterDate').value;
-        let query = database.ref('attendance');
-        if(byDate && fDate) query = query.orderByChild('date').equalTo(fDate);
+        if(filter && fDate) ref = ref.orderByChild('date').equalTo(fDate);
 
-        query.on('value', snap => {
-            const data = snap.val();
+        ref.on('value', snap => {
+            const logs = snap.val();
             const view = document.getElementById('logsView');
-            if(!data) { view.innerHTML = "No logs."; return; }
-            view.innerHTML = Object.keys(data).reverse().map(k => {
-                const log = data[k];
+            if(!logs) { view.innerHTML = "<center>No History.</center>"; return; }
+            view.innerHTML = Object.keys(logs).reverse().map(key => {
+                const item = logs[key];
+                // Smart Fix: Display "Lab" even if "Practical" is saved in DB
+                const displayType = (item.type === "Practical") ? "Lab" : item.type;
                 return `<div class="history-card">
                     <div class="card-header">
-                        ${isAdmin ? `<button class="btn-delete" onclick="deleteLog('${k}')">🗑️</button>` : ''}
-                        <div class="header-content" onclick="toggleBody(this)">
-                            <span><b>${log.sub}</b> (${log.date})</span>
-                            <span>P:${log.pL?log.pL.length:0} A:${log.aL?log.aL.length:0} ▾</span>
+                        ${isAdmin ? `<button class="btn-delete" onclick="deleteRec('${key}')">🗑️</button>` : ''}
+                        <div style="flex:1; display:flex; justify-content:space-between; margin:0 10px;" onclick="this.parentElement.nextElementSibling.style.display=(this.parentElement.nextElementSibling.style.display==='block'?'none':'block')">
+                            <span><span class="type-badge">${displayType}</span> <b>${item.sub}</b></span>
+                            <span>${item.date} (${item.pL?item.pL.length:0}P) ▾</span>
                         </div>
-                        ${isAdmin ? `<button class="btn-edit" onclick="editLog('${k}')">EDIT</button>` : ''}
+                        ${isAdmin ? `<button class="btn-edit" onclick="editRec('${key}')">EDIT</button>` : ''}
                     </div>
                     <div class="card-body">
-                        <button class="view-toggle" onclick="toggleNames(this)">Show Codes</button>
-                        <div style="clear:both;"></div>
-                        <b>Present:</b><br><div class="p-list">${renderTags(log.pL, 'p')}</div><br>
-                        <b>Absent:</b><br><div class="a-list">${renderTags(log.aL, 'a')}</div>
+                        <b>Present:</b><br>${item.pL?item.pL.map(i=>`<span class="tag p-tag">${i.n}</span>`).join(''):'None'}<br><br>
+                        <b>Absent:</b><br>${item.aL?item.aL.map(i=>`<span class="tag a-tag">${i.n}</span>`).join(''):'None'}
                     </div>
                 </div>`;
             }).join('');
         });
     }
 
-    function editLog(key) {
+    function editRec(key) {
         database.ref('attendance').child(key).once('value', snap => {
-            const log = snap.val();
+            const d = snap.val();
             editingKey = key;
-            document.getElementById('classDate').value = log.date;
-            document.getElementById('subject').value = log.sub;
-            document.getElementById('classType').value = log.type;
-            
-            const btn = document.getElementById('mainSaveBtn');
-            btn.innerText = "UPDATE RECORD (" + log.date + ")";
-            btn.style.background = "#f39c12";
-
-            document.querySelectorAll('input[type="radio"][value="A"]').forEach(r => r.checked = true);
-            if(log.pL) {
-                log.pL.forEach(student => {
-                    let r = document.querySelector(`input[name="st_${student.id}"][value="P"]`);
-                    if(r) r.checked = true;
-                });
-            }
-            window.scrollTo({top: 0, behavior: 'smooth'});
+            loadedPres = (d.pL || []).map(p => p.id || p.n);
+            document.getElementById('classDate').value = d.date;
+            document.getElementById('subject').value = d.sub;
+            // Load "Lab" in select even if "Practical" is in DB
+            document.getElementById('classType').value = (d.type === "Practical") ? "Lab" : (d.type || "Lecture");
+            document.getElementById('mainSaveBtn').innerText = "Update Record";
+            document.getElementById('mainSaveBtn').style.background = "#f39c12";
+            renderList();
+            window.scrollTo({top:0, behavior:'smooth'});
         });
     }
 
-    function deleteLog(key) { if(confirm("Delete Permanent?")) database.ref('attendance').child(key).remove(); }
-    function renderTags(list, type) { if(!list) return "None"; return list.map(item => `<span class="tag ${type}-tag" data-full="${item.n}" data-code="${item.c}">${item.n}</span>`).join(''); }
-    function toggleNames(btn) {
-        const tags = btn.parentElement.querySelectorAll('.tag');
-        const isCode = btn.innerText === "Show Names";
-        tags.forEach(t => t.innerText = isCode ? t.getAttribute('data-full') : t.getAttribute('data-code'));
-        btn.innerText = isCode ? "Show Codes" : "Show Names";
-    }
-    function toggleBody(el) { const b = el.parentElement.nextElementSibling; b.style.display = (b.style.display==='block'?'none':'block'); }
+    function deleteRec(k) { if(confirm("Permanently Delete?")) database.ref('attendance').child(k).remove(); }
 </script>
 </body>
 </html>
