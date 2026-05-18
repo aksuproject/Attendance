@@ -41,15 +41,15 @@
         .btn-delete { background: none; border: none; cursor: pointer; font-size: 16px; color: #bbb; }
         
         .login-footer { margin-top: 30px; padding: 20px; background: #eee; border-radius: 12px; text-align: center; }
-        .tag { display: inline-block; padding: 3px 6px; border-radius: 4px; margin: 2px; font-size: 10px; }
-        .p-tag { background: #e8f5e9; color: #2e7d32; }
-        .a-tag { background: #ffebee; color: #c62828; }
+        .tag { display: inline-block; padding: 3px 6px; border-radius: 4px; margin: 2px; font-size: 10px; font-weight: 500; }
+        .p-tag { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .a-tag { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="text-align:center; color:var(--primary);">Attendance</h2>
+    <h2 style="text-align:center; color:var(--primary);">Mechanical Attendance</h2>
 
     <div id="adminPanel">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -204,12 +204,18 @@
         const date = document.getElementById('classDate').value;
         const sub = document.getElementById('subject').value || "No Subject";
         const type = document.getElementById('classType').value;
+        
         let pL = [], aL = [];
-        students.forEach(s => {
+        
+        // CRITICAL FIX: Hamesha ID / Sequence (Roll No) ke hisab se sorted data hi cloud par jayega
+        let sortedToSave = [...students].sort((a,b) => a.id.localeCompare(b.id));
+
+        sortedToSave.forEach(s => {
             const isP = document.querySelector(`input[name="st_${s.id}"]:checked`).value === 'P';
             let entry = { n: s.name, id: s.id, c: s.id.slice(-4) };
             isP ? pL.push(entry) : aL.push(entry);
         });
+
         const data = { date, sub, type, pL, aL, ts: Date.now() };
         if(editingKey) database.ref('attendance').child(editingKey).set(data).then(() => { alert("Record updated!"); resetForm(); });
         else database.ref('attendance').push(data).then(() => { alert("Saved!"); resetForm(); });
@@ -234,7 +240,6 @@
             if(!logs) { view.innerHTML = "<center>No History.</center>"; return; }
             view.innerHTML = Object.keys(logs).reverse().map(key => {
                 const item = logs[key];
-                // Smart Fix: Display "Lab" even if "Practical" is saved in DB
                 const displayType = (item.type === "Practical") ? "Lab" : item.type;
                 return `<div class="history-card">
                     <div class="card-header">
@@ -246,8 +251,10 @@
                         ${isAdmin ? `<button class="btn-edit" onclick="editRec('${key}')">EDIT</button>` : ''}
                     </div>
                     <div class="card-body">
-                        <b>Present:</b><br>${item.pL?item.pL.map(i=>`<span class="tag p-tag">${i.n}</span>`).join(''):'None'}<br><br>
-                        <b>Absent:</b><br>${item.aL?item.aL.map(i=>`<span class="tag a-tag">${i.n}</span>`).join(''):'None'}
+                        <button class="view-toggle" onclick="toggleTags(this)">Show Codes</button>
+                        <div style="clear:both; margin-top:10px;"></div>
+                        <b>Present:</b><br><div class="p-list">${renderTags(item.pL, 'p')}</div><br>
+                        <b>Absent:</b><br><div class="a-list">${renderTags(item.aL, 'a')}</div>
                     </div>
                 </div>`;
             }).join('');
@@ -261,7 +268,6 @@
             loadedPres = (d.pL || []).map(p => p.id || p.n);
             document.getElementById('classDate').value = d.date;
             document.getElementById('subject').value = d.sub;
-            // Load "Lab" in select even if "Practical" is in DB
             document.getElementById('classType').value = (d.type === "Practical") ? "Lab" : (d.type || "Lecture");
             document.getElementById('mainSaveBtn').innerText = "Update Record";
             document.getElementById('mainSaveBtn').style.background = "#f39c12";
@@ -271,6 +277,15 @@
     }
 
     function deleteRec(k) { if(confirm("Permanently Delete?")) database.ref('attendance').child(k).remove(); }
+    function renderTags(list, type) { if(!list) return "None"; return list.map(item => `<span class="tag ${type}-tag" data-full="${item.n}" data-code="${item.c || '??'}">${item.n}</span>`).join(''); }
+    
+    function toggleTags(btn) {
+        const body = btn.parentElement;
+        const tags = body.querySelectorAll('.tag');
+        const isCodeMode = btn.innerText === "Show Names";
+        tags.forEach(t => t.innerText = isCodeMode ? t.getAttribute('data-full') : t.getAttribute('data-code'));
+        btn.innerText = isCodeMode ? "Show Codes" : "Show Names";
+    }
 </script>
 </body>
 </html>
