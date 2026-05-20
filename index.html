@@ -13,7 +13,7 @@
         
         #adminPanel { display: none; border-bottom: 3px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
         .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
-        .input-group { display: flex; flex-direction: column; }
+        .input-group { display: flex; flex-direction: column; justify-content: center; }
         label { font-weight: bold; font-size: 10px; color: #555; }
         input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
         
@@ -34,16 +34,19 @@
         .history-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; }
         .card-header { padding: 12px; cursor: pointer; display: flex; justify-content: space-between; font-weight: bold; align-items: center; }
         .card-body { padding: 12px; display: none; background: #fafafa; border-top: 1px solid #eee; }
-        .type-badge { background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; }
         
         .btn-submit { background: var(--present); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 20px; font-size: 16px; }
         .btn-edit { background: #f39c12; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: bold; }
         .btn-delete { background: none; border: none; cursor: pointer; font-size: 16px; color: #bbb; }
+        .view-toggle { background: #e0e0e0; border: none; padding: 5px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; float: right; }
         
         .login-footer { margin-top: 30px; padding: 20px; background: #eee; border-radius: 12px; text-align: center; }
         .tag { display: inline-block; padding: 3px 6px; border-radius: 4px; margin: 2px; font-size: 10px; font-weight: 500; }
         .p-tag { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
         .a-tag { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        
+        .type-badge { color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; display: inline-block; }
+        .checkbox-container { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--absent); margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -53,19 +56,35 @@
 
     <div id="adminPanel">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <span style="color: green; font-weight: bold;">Editor Mode</span>
+            <span style="color: green; font-weight: bold;">Editor Mode Active</span>
             <button onclick="logout()" style="background: #e74c3c; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">Logout</button>
         </div>
 
         <div class="controls">
-            <div class="input-group"><label>Class Date</label><input type="date" id="classDate"></div>
-            <div class="input-group"><label>Subject</label><input type="text" id="subject" placeholder="Subject"></div>
-            <div class="input-group"><label>Type</label>
-                <select id="classType">
-                    <option value="Lecture">Lecture</option>
-                    <option value="Lab">Lab</option>
-                    <option value="Extra Class">Extra Class</option>
-                </select>
+            <div class="input-group">
+                <label>Class Date</label>
+                <input type="date" id="classDate">
+            </div>
+            <div class="input-group">
+                <label>Subject</label>
+                <input type="text" id="subject" list="subjectList" placeholder="Select or type subject...">
+                <datalist id="subjectList">
+                    <option value="Mathematics II"></option>
+                    <option value="Chemistry I"></option>
+                    <option value="Chemistry Lab"></option>
+                    <option value="PPS"></option>
+                    <option value="PPS Lab"></option>
+                    <option value="Workshop"></option>
+                    <option value="Workshop Lab"></option>
+                    <option value="Communication Skills"></option>
+                    <option value="Yoga & Sports"></option>
+                </datalist>
+            </div>
+            <div class="input-group">
+                <label class="checkbox-container">
+                    <input type="checkbox" id="isExtraLecture" style="width: 18px; height: 18px; accent-color: var(--absent); cursor: pointer;">
+                    <span>Mark as Extra Lecture</span>
+                </label>
             </div>
         </div>
 
@@ -162,8 +181,8 @@
             document.getElementById('adminPanel').style.display = "block";
             document.getElementById('loginBox').style.display = "none";
             fetchHistory(false);
-            alert("Admin Access Unlocked");
-        } else alert("Mafi chahte hain, galat password!");
+            alert("Login Successful");
+        } else alert("Invalid Password");
     }
 
     function logout() {
@@ -203,11 +222,9 @@
     function pushToCloud() {
         const date = document.getElementById('classDate').value;
         const sub = document.getElementById('subject').value || "No Subject";
-        const type = document.getElementById('classType').value;
+        const isExtra = document.getElementById('isExtraLecture').checked;
         
         let pL = [], aL = [];
-        
-        // CRITICAL FIX: Hamesha ID / Sequence (Roll No) ke hisab se sorted data hi cloud par jayega
         let sortedToSave = [...students].sort((a,b) => a.id.localeCompare(b.id));
 
         sortedToSave.forEach(s => {
@@ -216,9 +233,18 @@
             isP ? pL.push(entry) : aL.push(entry);
         });
 
-        const data = { date, sub, type, pL, aL, ts: Date.now() };
-        if(editingKey) database.ref('attendance').child(editingKey).set(data).then(() => { alert("Record updated!"); resetForm(); });
-        else database.ref('attendance').push(data).then(() => { alert("Saved!"); resetForm(); });
+        const data = { date, sub, isExtra, pL, aL, ts: Date.now() };
+        
+        // Added Error Catching to show alerts if Firebase blocks it
+        if(editingKey) {
+            database.ref('attendance').child(editingKey).set(data)
+            .then(() => { alert("Updated!"); resetForm(); })
+            .catch(err => alert("Error saving data: " + err.message));
+        } else {
+            database.ref('attendance').push(data)
+            .then(() => { alert("Saved!"); resetForm(); })
+            .catch(err => alert("Error saving data: " + err.message));
+        }
     }
 
     function resetForm() {
@@ -226,6 +252,7 @@
         document.getElementById('mainSaveBtn').innerText = "Finalize & Save";
         document.getElementById('mainSaveBtn').style.background = "var(--present)";
         document.getElementById('subject').value = "";
+        document.getElementById('isExtraLecture').checked = false;
         updateView(highlightMode);
     }
 
@@ -234,20 +261,36 @@
         const fDate = document.getElementById('filterDate').value;
         if(filter && fDate) ref = ref.orderByChild('date').equalTo(fDate);
 
+        // Added Error handling function at the end
         ref.on('value', snap => {
             const logs = snap.val();
             const view = document.getElementById('logsView');
-            if(!logs) { view.innerHTML = "<center>No History.</center>"; return; }
+            if(!logs) { view.innerHTML = "<center>No records found.</center>"; return; }
+            
             view.innerHTML = Object.keys(logs).reverse().map(key => {
                 const item = logs[key];
-                const displayType = (item.type === "Practical") ? "Lab" : item.type;
+                
+                let badgeHTML = "";
+                if (item.isExtra === true || item.type === "Extra Class") {
+                    badgeHTML = `<span class="type-badge" style="background:#e74c3c;">Extra Lecture</span>`;
+                } else if (item.type === "Practical" || item.type === "Lab") {
+                    badgeHTML = `<span class="type-badge" style="background:#8e44ad;">Lab</span>`;
+                }
+
                 return `<div class="history-card">
                     <div class="card-header">
                         ${isAdmin ? `<button class="btn-delete" onclick="deleteRec('${key}')">🗑️</button>` : ''}
-                        <div style="flex:1; display:flex; justify-content:space-between; margin:0 10px;" onclick="this.parentElement.nextElementSibling.style.display=(this.parentElement.nextElementSibling.style.display==='block'?'none':'block')">
-                            <span><span class="type-badge">${displayType}</span> <b>${item.sub}</b></span>
-                            <span>${item.date} (${item.pL?item.pL.length:0}P) ▾</span>
+                        
+                        <div style="flex:1; display:flex; justify-content:space-between; align-items:center; margin:0 10px; gap:8px;" onclick="this.parentElement.nextElementSibling.style.display=(this.parentElement.nextElementSibling.style.display==='block'?'none':'block')">
+                            
+                            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; line-height:1.2;">
+                                ${badgeHTML} 
+                                <b style="word-break: break-word;">${item.sub}</b>
+                            </div>
+                            
+                            <span style="white-space:nowrap; font-size:11px;">${item.date} (${item.pL?item.pL.length:0}P) ▾</span>
                         </div>
+
                         ${isAdmin ? `<button class="btn-edit" onclick="editRec('${key}')">EDIT</button>` : ''}
                     </div>
                     <div class="card-body">
@@ -258,6 +301,14 @@
                     </div>
                 </div>`;
             }).join('');
+        }, error => {
+            // FIREBASE ERROR CATCHER
+            console.error(error);
+            document.getElementById('logsView').innerHTML = `<div style="color:#c62828; padding:15px; border:1px solid #ffcdd2; border-radius:8px; background:#ffebee; text-align:center;">
+                <b>Database Access Denied!</b><br><br>
+                Aapke Firebase Database ke rules expire ho gaye hain.<br>
+                Kripya Firebase console mein jaakar rules ko <b>true</b> karein.
+            </div>`;
         });
     }
 
@@ -266,17 +317,21 @@
             const d = snap.val();
             editingKey = key;
             loadedPres = (d.pL || []).map(p => p.id || p.n);
+            
             document.getElementById('classDate').value = d.date;
             document.getElementById('subject').value = d.sub;
-            document.getElementById('classType').value = (d.type === "Practical") ? "Lab" : (d.type || "Lecture");
-            document.getElementById('mainSaveBtn').innerText = "Update Record";
+            
+            const isExtra = d.isExtra === true || d.type === "Extra Class";
+            document.getElementById('isExtraLecture').checked = isExtra;
+            
+            document.getElementById('mainSaveBtn').innerText = "Update Now";
             document.getElementById('mainSaveBtn').style.background = "#f39c12";
             renderList();
             window.scrollTo({top:0, behavior:'smooth'});
         });
     }
 
-    function deleteRec(k) { if(confirm("Permanently Delete?")) database.ref('attendance').child(k).remove(); }
+    function deleteRec(k) { if(confirm("Delete Rec?")) database.ref('attendance').child(k).remove(); }
     function renderTags(list, type) { if(!list) return "None"; return list.map(item => `<span class="tag ${type}-tag" data-full="${item.n}" data-code="${item.c || '??'}">${item.n}</span>`).join(''); }
     
     function toggleTags(btn) {
