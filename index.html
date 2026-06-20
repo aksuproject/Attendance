@@ -146,26 +146,7 @@
         {sn: 33, id: "B2555R10102041", name: "HARISHANKAR PATEL"}, {sn: 34, id: "B2555R10102042", name: "ANUJ BARMAN"},
         {sn: 35, id: "B2555R10102043", name: "MOHIT BANSAL"}, {sn: 36, id: "B2555R10102044", name: "RAHUL KUSHWAHA"},
         {sn: 37, id: "B2555R10102046", name: "SHREYESH SINGH"}, {sn: 38, id: "B2555R10102047", name: "LAKKI MOHAMMAD"},
-        {sn: 39, id: "B2555R10102048", name: "ANAND SAHU"}, {sn: 40, id: "B2555R10102049", name: "SHIVAM KUSHWAHA"},
-        {sn: 41, id: "B2555R10103002", name: "DIPAK KUMAR"}, {sn: 42, id: "B2555R10103003", name: "VIVEK YADAV"},
-        {sn: 43, id: "B2555R10103004", name: "YUVRAJ SAHU"}, {sn: 44, id: "B2555R10103005", name: "SHIVAM RAJAK"},
-        {sn: 45, id: "B2555R10103006", name: "AVADH RAJ SAHU"}, {sn: 46, id: "B2555R10103007", name: "SACHIN KUSHWAHA"},
-        {sn: 47, id: "B2555R10103008", name: "DINKAR SONDHIYA"}, {sn: 48, id: "B2555R10103009", name: "GAURAV CHAURASIYA"},
-        {sn: 49, id: "B2555R10103010", name: "SATYAM SONI"}, {sn: 50, id: "B2555R10103011", name: "VISHWAJEET SINGH"},
-        {sn: 51, id: "B2555R10103012", name: "AYUSH RAJAK"}, {sn: 52, id: "B2555R10103015", name: "PRINSU SINGH"},
-        {sn: 53, id: "B2555R10103016", name: "SHUBHAM GAUTAM"}, {sn: 54, id: "B2555R10103017", name: "SHIVANSHU CHAUDHARI"},
-        {sn: 55, id: "B2555R10103018", name: "ARUN KUSHWAHA"}, {sn: 56, id: "B2555R10103019", name: "UTRESH SAKET"},
-        {sn: 57, id: "B2555R10103021", name: "RINKU PRAJAPATI"}, {sn: 58, id: "B2555R10103022", name: "ABHISHEK SONI"},
-        {sn: 59, id: "B2555R10103023", name: "DEVANSI SINGH"}, {sn: 60, id: "B2555R10103024", name: "ATUL KUSHWAHA"},
-        {sn: 61, id: "B2555R10103025", name: "JAGBEER YADAV"}, {sn: 62, id: "B2555R10103026", name: "SUJEET KUMAR"},
-        {sn: 63, id: "B2555R10103027", name: "AMIT KUMAR PRAJAPATI"}, {sn: 64, id: "B2555R10103028", name: "VIVEK CHAUDHARY"},
-        {sn: 65, id: "B2555R10103030", name: "AJAY TRIPATHI"}, {sn: 66, id: "B2555R10103034", name: "ABHAY SINGH"},
-        {sn: 67, id: "B2555R10103035", name: "PRAKASH DOHAR"}, {sn: 68, id: "B2555R10103036", name: "AMIT PATEL"},
-        {sn: 69, id: "B2555R10103037", name: "ANIKET RAJAK"}, {sn: 70, id: "B2555R10103038", name: "PRANSHU PAL"},
-        {sn: 71, id: "B2555R10103039", name: "NITESH KUMAR VERMA"}, {sn: 72, id: "B2555R10103040", name: "SAGAR PATEL"},
-        {sn: 73, id: "B2555R10103041", name: "ARPIT SAHU"}, {sn: 74, id: "B2555R10103042", name: "ANSH SINGH"},
-        {sn: 75, id: "B2555R10103043", name: "SACHIN SAHU"}, {sn: 76, id: "B2555R10103044", name: "ASTITVA DWIVEDI"},
-        {sn: 77, id: "B2555R10103048", name: "SHITESH KUSHWAHA"}
+        {sn: 39, id: "B2555R10102048", name: "ANAND SAHU"}, {sn: 40, id: "B2555R10102049", name: "SHIVAM KUSHWAHA"}
     ];
 
     window.onload = () => {
@@ -176,7 +157,7 @@
     };
 
     function login() {
-        if(document.getElementById('adminPass').value === "siar@2020") {
+        if(document.getElementById('adminPass').value === "ego360") {
             isAdmin = true;
             document.getElementById('adminPanel').style.display = "block";
             document.getElementById('loginBox').style.display = "none";
@@ -235,7 +216,6 @@
 
         const data = { date, sub, isExtra, pL, aL, ts: Date.now() };
         
-        // Added Error Catching to show alerts if Firebase blocks it
         if(editingKey) {
             database.ref('attendance').child(editingKey).set(data)
             .then(() => { alert("Updated!"); resetForm(); })
@@ -261,7 +241,6 @@
         const fDate = document.getElementById('filterDate').value;
         if(filter && fDate) ref = ref.orderByChild('date').equalTo(fDate);
 
-        // Added Error handling function at the end
         ref.on('value', snap => {
             const logs = snap.val();
             const view = document.getElementById('logsView');
@@ -302,7 +281,6 @@
                 </div>`;
             }).join('');
         }, error => {
-            // FIREBASE ERROR CATCHER
             console.error(error);
             document.getElementById('logsView').innerHTML = `<div style="color:#c62828; padding:15px; border:1px solid #ffcdd2; border-radius:8px; background:#ffebee; text-align:center;">
                 <b>Database Access Denied!</b><br><br>
