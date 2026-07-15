@@ -639,6 +639,16 @@
         renderHistoryLogs();
     }
 
+    // Date Helper to format YYYY-MM-DD to DD/MM/YYYY
+    function formatExcelDate(dateStr) {
+        if(!dateStr) return "";
+        const parts = dateStr.split('-');
+        if(parts.length === 3) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return dateStr;
+    }
+
     function updateView(mode) {
         highlightMode = mode;
         document.getElementById('sortName').className = (mode === 'name') ? 'btn-sort active' : 'btn-sort';
@@ -739,7 +749,7 @@
                             ${badgeHTML} 
                             <b style="word-break: break-word; color:var(--title-color);">${item.sub || 'Blank Subject'}</b>
                         </div>
-                        <span style="white-space:nowrap; font-size:11px; color:var(--text-muted);">${item.date} (${item.pL?item.pL.length:0}P) ▾</span>
+                        <span style="white-space:nowrap; font-size:11px; color:var(--text-muted);">${formatExcelDate(item.date)} (${item.pL?item.pL.length:0}P) ▾</span>
                     </div>
                     ${isAdmin ? `<button class="btn-edit" onclick="editRec('${key}')">EDIT</button>` : ''}
                 </div>
@@ -753,7 +763,7 @@
         }).join('');
     }
 
-    // EXCEL EXTRACT ENGINE WITH CONDITIONAL DYNAMIC FILTERING
+    // EXCEL EXTRACT ENGINE WITH CONDITIONAL DYNAMIC FILTERING & DATE REMAPPING
     function exportFilteredToExcel() {
         const fSub = document.getElementById('filterSubject').value;
         
@@ -767,7 +777,6 @@
 
         keys.sort((a,b) => globalLogs[a].date.localeCompare(globalLogs[b].date));
 
-        // Check whether ANY of the records under this subject actually contained an EE student
         let hasEEData = false;
         keys.forEach(key => {
             const lecture = globalLogs[key];
@@ -778,7 +787,6 @@
             }
         });
 
-        // Dynamic base row selection mapping logic
         const currentFullSheetList = hasEEData ? [...meStudents, ...eeStudents] : [...meStudents];
         
         let allStudentsMap = {};
@@ -788,7 +796,9 @@
 
         keys.forEach(key => {
             const lecture = globalLogs[key];
-            const headerName = `${lecture.date} (${lecture.isExtra ? 'Extra' : 'Regular'})`;
+            const cleanDate = formatExcelDate(lecture.date);
+            // Modified Header matching configuration rule: regular removed, extra kept
+            const headerName = lecture.isExtra ? `${cleanDate} (Extra)` : `${cleanDate}`;
             
             const presentIDs = (lecture.pL || []).map(p => p.id);
             const absentIDs = (lecture.aL || []).map(a => a.id);
