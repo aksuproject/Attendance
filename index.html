@@ -136,7 +136,7 @@
             .input-group.full-width {
                 grid-column: span 1;
             }
-            .history-filters {
+            .filter-row {
                 flex-direction: column;
                 align-items: stretch !important;
             }
@@ -296,29 +296,33 @@
             opacity: 0.9;
         }
 
-        .history-section {
+        .section-box {
             margin-top: 25px;
+            border-top: 2px solid var(--border);
+            padding-top: 20px;
         }
 
-        .history-header-bar {
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 12px;
-            margin-bottom: 15px;
+        .section-title {
+            font-size: 14px; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            color: var(--title-color);
         }
 
-        .history-filters {
+        .filter-row {
             display: flex;
             gap: 10px;
             align-items: center;
-            margin-top: 10px;
+            margin-bottom: 15px;
         }
 
         .btn-excel {
             background: #27ae60;
             color: white;
             border: none;
-            padding: 8px 12px;
-            font-size: 11px;
+            padding: 10px 15px;
+            font-size: 12px;
             font-weight: bold;
             text-transform: uppercase;
             cursor: pointer;
@@ -469,17 +473,23 @@
                     <option value="Others"></option>
                 </datalist>
             </div>
-            <div class="input-group full-width">
+            <div class="input-group">
                 <label class="checkbox-container">
                     <input type="checkbox" id="isExtraLecture">
                     <span>Mark as Extra Lecture</span>
                 </label>
             </div>
+            <div class="input-group">
+                <label class="checkbox-container" style="color: #3498db;">
+                    <input type="checkbox" id="includeEE" onchange="renderList()">
+                    <span>Include Electrical (EE) Students</span>
+                </label>
+            </div>
         </div>
 
         <div class="sort-bar">
-            <button id="sortName" class="btn-sort active" onclick="updateView('name')">Highlight Name</button>
-            <button id="sortCode" class="btn-sort" onclick="updateView('id')">Highlight Code</button>
+            <button id="sortName" class="btn-sort" onclick="updateView('name')">Highlight Name</button>
+            <button id="sortCode" class="btn-sort active" onclick="updateView('id')">Highlight Code</button>
         </div>
 
         <div class="list-header">
@@ -495,29 +505,33 @@
         <button type="button" class="btn-submit" id="mainSaveBtn" onclick="pushToCloud()">Finalize & Save</button>
     </div>
 
-    <div class="history-section">
-        <div class="history-header-bar">
-            <h3 style="margin:0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">History & Export</h3>
-            <div class="history-filters">
-                <input type="date" id="filterDate" onchange="fetchHistory(true)" style="padding: 6px; font-size: 12px;">
-                <select id="filterSubject" onchange="fetchHistory(true)" style="padding: 6px; font-size: 12px; background: var(--input-bg); color: var(--text); border:1px solid var(--border);">
-                    <option value="UHV (Universal Human Values)">UHV</option>
-                    <option value="Basic Electronics Engineering">Basic Electronics</option>
-                    <option value="Mechanics of Deformable Solids">MDS</option>
-                    <option value="Engineering Mechanics">Engg Mechanics</option>
-                    <option value="Mathematics-3">Maths-3</option>
-                    <option value="Applied Thermodynamics">ATD</option>
-                    <option value="Environmental Science">EVS</option>
-                    <option value="Mechanics of Deformable Solids Lab">MDS Lab</option>
-                    <option value="Engineering Mechanics Lab">EM Lab</option>
-                    <option value="Applied Thermodynamics Lab">ATD Lab</option>
-                    <option value="Basic Electronics Engineering Lab">BEE Lab</option>
-                    <option value="Seminar / Presentation">Seminar</option>
-                    <option value="Mentor / Mentee">Mentor/Mentee</option>
-                    <option value="Others">Others</option>
-                </select>
-                <button class="btn-excel" onclick="exportFilteredToExcel()">Export Excel</button>
-            </div>
+    <div class="section-box">
+        <h3 class="section-title">Excel Data Extraction</h3>
+        <div class="filter-row">
+            <select id="filterSubject" style="padding: 10px; background: var(--input-bg); color: var(--text); border:1px solid var(--border);">
+                <option value="UHV (Universal Human Values)">UHV</option>
+                <option value="Basic Electronics Engineering">Basic Electronics</option>
+                <option value="Mechanics of Deformable Solids">MDS</option>
+                <option value="Engineering Mechanics">Engg Mechanics</option>
+                <option value="Mathematics-3">Maths-3</option>
+                <option value="Applied Thermodynamics">ATD</option>
+                <option value="Environmental Science">EVS</option>
+                <option value="Mechanics of Deformable Solids Lab">MDS Lab</option>
+                <option value="Engineering Mechanics Lab">EM Lab</option>
+                <option value="Applied Thermodynamics Lab">ATD Lab</option>
+                <option value="Basic Electronics Engineering Lab">BEE Lab</option>
+                <option value="Seminar / Presentation">Seminar</option>
+                <option value="Mentor / Mentee">Mentor/Mentee</option>
+                <option value="Others">Others</option>
+            </select>
+            <button class="btn-excel" onclick="exportFilteredToExcel()">Download Sheet</button>
+        </div>
+    </div>
+
+    <div class="section-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 class="section-title" style="margin:0;">Attendance Logs History</h3>
+            <input type="date" id="filterDate" onchange="renderHistoryLogs()" style="max-width: 150px; padding: 5px; font-size: 12px;">
         </div>
         <div id="logsView" style="color: var(--text-muted); text-align: center; padding: 10px 0;">Loading logs...</div>
     </div>
@@ -542,8 +556,9 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    let highlightMode = 'name', isAdmin = false, editingKey = null, loadedPres = [], globalLogs = {};
-    let students = [
+    let highlightMode = 'id', isAdmin = false, editingKey = null, loadedPres = [], globalLogs = {};
+    
+    const meStudents = [
         {id: "B2555R10102001", name: "ABHISHEK KUMAR"}, {id: "B2555R10102002", name: "SANJEEV KUMAR"},
         {id: "B2555R10102005", name: "SATEESH KUMAR CHAUDHARI"}, {id: "B2555R10102006", name: "AJEET SINGH"},
         {id: "B2555R10102007", name: "KARAN KUMAR VERMA"}, {id: "B2555R10102008", name: "SHIVENDRA PRATAP VERMA"},
@@ -563,8 +578,10 @@
         {id: "B2555R10102041", name: "HARISHANKAR PATEL"}, {id: "B2555R10102042", name: "ANUJ BARMAN"},
         {id: "B2555R10102043", name: "MOHIT BANSAL"}, {id: "B2555R10102044", name: "RAHUL KUSHWAHA"},
         {id: "B2555R10102046", name: "SHREYESH SINGH"}, {id: "B2555R10102047", name: "LAKKI MOHAMMAD"},
-        {id: "B2555R10102048", name: "ANAND SAHU"}, {id: "B2555R10102049", name: "SHIVAM KUSHWAHA"},
-        /* EE Students */
+        {id: "B2555R10102048", name: "ANAND SAHU"}, {id: "B2555R10102049", name: "SHIVAM KUSHWAHA"}
+    ];
+
+    const eeStudents = [
         {id: "B2555R10103002", name: "DIPAK KUMAR"}, {id: "B2555R10103003", name: "VIVEK YADAV"},
         {id: "B2555R10103004", name: "YUVRAJ SAHU"}, {id: "B2555R10103005", name: "SHIVAM RAJAK"},
         {id: "B2555R10103006", name: "AVADH RAJ SAHU"}, {id: "B2555R10103007", name: "SACHIN KUSHWAHA"},
@@ -586,11 +603,13 @@
         {id: "B2555R10103048", name: "SHITESH KUSHWAHA"}
     ];
 
+    let students = [];
+
     window.onload = () => {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('classDate').value = today;
-        updateView('name');
-        fetchHistory(false);
+        updateView('id');
+        fetchHistory();
         
         const savedTheme = localStorage.getItem('theme') || 'dark';
         document.body.setAttribute('data-theme', savedTheme);
@@ -604,33 +623,37 @@
     }
 
     function login() {
-        // Password updated to aks123
         if(document.getElementById('adminPass').value === "aks123") {
             isAdmin = true;
             document.getElementById('adminPanel').style.display = "block";
             document.getElementById('loginBox').style.display = "none";
-            fetchHistory(false);
+            renderHistoryLogs(); 
             alert("Login Successful");
         } else alert("Invalid Password");
     }
 
+    // Removed direct page refresh to keep theme state secure during signouts
     function logout() {
         isAdmin = false;
         document.getElementById('adminPanel').style.display = "none";
         document.getElementById('loginBox').style.display = "block";
-        fetchHistory(false);
+        renderHistoryLogs();
     }
 
     function updateView(mode) {
         highlightMode = mode;
         document.getElementById('sortName').className = (mode === 'name') ? 'btn-sort active' : 'btn-sort';
         document.getElementById('sortCode').className = (mode === 'id') ? 'btn-sort active' : 'btn-sort';
-        if(mode === 'name') students.sort((a,b) => a.name.localeCompare(b.name));
-        else students.sort((a,b) => a.id.localeCompare(b.id));
         renderList();
     }
 
     function renderList() {
+        const includeEE = document.getElementById('includeEE').checked;
+        students = includeEE ? [...meStudents, ...eeStudents] : [...meStudents];
+
+        if(highlightMode === 'name') students.sort((a,b) => a.name.localeCompare(b.name));
+        else students.sort((a,b) => a.id.localeCompare(b.id));
+
         const listBody = document.getElementById('listBody');
         listBody.innerHTML = students.map((s, index) => {
             const isP = loadedPres.includes(s.id) || loadedPres.includes(s.name);
@@ -650,7 +673,7 @@
 
     function pushToCloud() {
         const date = document.getElementById('classDate').value;
-        const sub = document.getElementById('subject').value || "No Subject";
+        const sub = document.getElementById('subject').value || "Blank Subject Name";
         const isExtra = document.getElementById('isExtraLecture').checked;
         
         let pL = [], aL = [];
@@ -680,33 +703,32 @@
         document.getElementById('mainSaveBtn').innerText = "Finalize & Save";
         document.getElementById('subject').value = "";
         document.getElementById('isExtraLecture').checked = false;
+        document.getElementById('includeEE').checked = false;
         updateView(highlightMode);
     }
 
-    function fetchHistory(filter) {
+    function fetchHistory() {
         let ref = database.ref('attendance');
         ref.on('value', snap => {
             globalLogs = snap.val() || {};
             renderHistoryLogs();
         }, error => {
             console.error(error);
-            document.getElementById('logsView').innerHTML = `<div style="color:#e57373; padding:15px; border:1px solid rgba(244,67,54,0.3); background:rgba(198,40,40,0.2); text-align:center;">
-                <b>Database Access Denied!</b>
-            </div>`;
+            document.getElementById('logsView').innerHTML = `<div style="color:#e57373; padding:15px; text-align:center;"><b>Database Access Denied!</b></div>`;
         });
     }
 
+    // UPDATED MODULE: Shows logs independently of chosen export subject
     function renderHistoryLogs() {
         const fDate = document.getElementById('filterDate').value;
-        const fSub = document.getElementById('filterSubject').value;
         const view = document.getElementById('logsView');
         
         let keys = Object.keys(globalLogs);
         
+        // Dynamic Date filter only
         if(fDate) keys = keys.filter(k => globalLogs[k].date === fDate);
-        if(fSub) keys = keys.filter(k => globalLogs[k].sub === fSub);
         
-        if(keys.length === 0) { view.innerHTML = "<div style='padding:15px;'>No records found.</div>"; return; }
+        if(keys.length === 0) { view.innerHTML = "<div style='padding:15px;'>No records found in database.</div>"; return; }
         
         view.innerHTML = keys.reverse().map(key => {
             const item = globalLogs[key];
@@ -718,7 +740,7 @@
                     <div style="flex:1; display:flex; justify-content:space-between; align-items:center; margin:0 10px; gap:8px;" onclick="this.parentElement.nextElementSibling.style.display=(this.parentElement.nextElementSibling.style.display==='block'?'none':'block')">
                         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; line-height:1.2;">
                             ${badgeHTML} 
-                            <b style="word-break: break-word; color:var(--title-color);">${item.sub}</b>
+                            <b style="word-break: break-word; color:var(--title-color);">${item.sub || 'Blank Subject'}</b>
                         </div>
                         <span style="white-space:nowrap; font-size:11px; color:var(--text-muted);">${item.date} (${item.pL?item.pL.length:0}P) ▾</span>
                     </div>
@@ -734,23 +756,23 @@
         }).join('');
     }
 
+    // EXCEL EXTRACT ENGINE (Runs isolated via Extraction Dropdown)
     function exportFilteredToExcel() {
         const fSub = document.getElementById('filterSubject').value;
-        const fDate = document.getElementById('filterDate').value;
         
         let keys = Object.keys(globalLogs);
-        if(fSub) keys = keys.filter(k => globalLogs[k].sub === fSub);
-        if(fDate) keys = keys.filter(k => globalLogs[k].date === fDate);
+        keys = keys.filter(k => globalLogs[k].sub === fSub);
         
         if(keys.length === 0) {
-            alert("Export karne ke liye koi records nahi mile!");
+            alert("Select kiye hue subject '" + fSub + "' ka koi data nahi mila!");
             return;
         }
 
         keys.sort((a,b) => globalLogs[a].date.localeCompare(globalLogs[b].date));
 
+        const currentFullSheetList = [...meStudents, ...eeStudents];
         let allStudentsMap = {};
-        students.forEach(s => {
+        currentFullSheetList.forEach(s => {
             allStudentsMap[s.id] = { "Roll No": s.id, "Student Name": s.name };
         });
 
@@ -788,11 +810,7 @@
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Attendance Sheet");
 
-        let filename = "Attendance_Report";
-        if(fSub) filename += "_" + fSub.replace(/[^a-zA-Z0-9]/g, "_");
-        if(fDate) filename += "_" + fDate;
-        filename += ".xlsx";
-
+        let filename = "Attendance_Report_" + fSub.replace(/[^a-zA-Z0-9]/g, "_") + ".xlsx";
         XLSX.writeFile(wb, filename);
     }
 
@@ -802,8 +820,13 @@
             editingKey = key;
             loadedPres = (d.pL || []).map(p => p.id || p.n);
             document.getElementById('classDate').value = d.date;
-            document.getElementById('subject').value = d.sub;
+            document.getElementById('subject').value = d.sub === "Blank Subject Name" ? "" : d.sub;
             document.getElementById('isExtraLecture').checked = d.isExtra === true;
+            
+            const totalP = (d.pL || []).some(p => p.id && p.id.includes("10103"));
+            const totalA = (d.aL || []).some(a => a.id && a.id.includes("10103"));
+            document.getElementById('includeEE').checked = (totalP || totalA);
+
             document.getElementById('mainSaveBtn').innerText = "Update Now";
             renderList();
             window.scrollTo({top:0, behavior:'smooth'});
