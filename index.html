@@ -3,23 +3,445 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ME Attendance Cloud - 2nd Year</title>
+    <title>ME & EE Attendance Cloud</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { 
+            --present: #2ecc71; 
+            --absent: #e74c3c; 
+            --primary: #111111; 
+            --accent: #333333;
+            --bg: #1a1a1a; 
+            --card-bg: #222222;
+            --text: #e0e0e0;
+            --text-muted: #888888;
+            --border: #333333;
+            --input-bg: #2a2a2a;
+            --title-color: #ffffff;
+            --panel-bg: #181818;
+            --card-hdr-bg: #1f1f1f;
+            --card-body-bg: #141414;
+        }
+
+        [data-theme="light"] {
+            --primary: #ffffff; 
+            --accent: #dddddd;
+            --bg: #f4f6f9; 
+            --card-bg: #ffffff;
+            --text: #222222;
+            --text-muted: #666666;
+            --border: #cccccc;
+            --input-bg: #ffffff;
+            --title-color: #111111;
+            --panel-bg: #eaeaea;
+            --card-hdr-bg: #f0f0f0;
+            --card-body-bg: #fafafa;
+        }
+        
+        * {
+            box-sizing: border-box;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        body { 
+            background: var(--bg); 
+            color: var(--text);
+            padding: 20px 15px; 
+            font-size: 13px; 
+            line-height: 1.5;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .container { 
+            max-width: 650px; 
+            margin: auto; 
+            background: var(--card-bg); 
+            padding: 25px; 
+            border: 1px solid var(--border);
+            border-radius: 0px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+            position: relative;
+            transition: background 0.3s, border 0.3s;
+        }
+        
+        .header-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 15px;
+        }
+
+        h2 {
+            font-size: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--title-color);
+        }
+
+        .theme-toggle-btn {
+            position: absolute;
+            right: 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--title-color);
+            padding: 5px;
+            line-height: 1;
+            transition: transform 0.2s;
+        }
+        .theme-toggle-btn:hover {
+            transform: scale(1.1);
+        }
+
+        #adminPanel { 
+            display: none; 
+            border-bottom: 1px dashed var(--border); 
+            padding-bottom: 25px; 
+            margin-bottom: 25px; 
+        }
+
+        .status-bar {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 20px;
+            background: var(--panel-bg);
+            padding: 10px 15px;
+            border: 1px solid var(--border);
+        }
+
+        .controls { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px; 
+            background: var(--panel-bg); 
+            padding: 15px; 
+            border: 1px solid var(--border);
+            margin-bottom: 20px; 
+        }
+
+        @media (max-width: 480px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            .input-group.full-width {
+                grid-column: span 1;
+            }
+            .history-filters {
+                flex-direction: column;
+                align-items: stretch !important;
+            }
+        }
+
+        .input-group { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 5px;
+            min-width: 0;
+        }
+
+        .input-group.full-width {
+            grid-column: span 2;
+        }
+
+        label { 
+            font-weight: 600; 
+            font-size: 11px; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted); 
+        }
+
+        input, select { 
+            background: var(--input-bg);
+            color: var(--text);
+            padding: 10px; 
+            border: 1px solid var(--border); 
+            border-radius: 0px; 
+            font-size: 13px; 
+            outline: none;
+            width: 100%; 
+            max-width: 100%;
+            transition: border-color 0.2s, background 0.3s, color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            border-color: #555555;
+        }
+        
+        .checkbox-container { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            cursor: pointer; 
+            color: var(--text); 
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .checkbox-container input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--text);
+            cursor: pointer;
+        }
+        
+        .sort-bar { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 20px; 
+        }
+
+        .btn-sort { 
+            flex: 1; 
+            padding: 10px; 
+            border: 1px solid var(--border); 
+            background: var(--panel-bg); 
+            color: var(--text-muted);
+            border-radius: 0px; 
+            cursor: pointer; 
+            font-size: 11px; 
+            text-transform: uppercase;
+            font-weight: 600; 
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+        }
+
+        .btn-sort.active { 
+            background: var(--title-color); 
+            color: var(--card-bg); 
+            border-color: var(--title-color);
+        }
+        
+        .list-header { 
+            display: flex; 
+            background: var(--panel-bg); 
+            padding: 12px 10px; 
+            font-weight: 700; 
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            margin-bottom: 10px; 
+        }
+
+        .list-body-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            background: var(--panel-bg);
+        }
+
+        .list-row { 
+            display: flex; 
+            align-items: center; 
+            padding: 12px 10px; 
+            border-bottom: 1px solid var(--border); 
+        }
+        
+        .list-row:last-child {
+            border-bottom: none;
+        }
+
+        .col-sn { width: 10%; color: var(--text-muted); font-weight: 600; }
+        .col-info { width: 68%; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .col-status { width: 22%; display: flex; justify-content: flex-end; gap: 12px; }
+
+        .focus-main { font-size: 13px; font-weight: 600; color: var(--title-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .focus-sub { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        
+        .radio-btn { 
+            cursor: pointer; 
+            font-weight: 700; 
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 0;
+            user-select: none;
+        }
+
+        .radio-btn input {
+            accent-color: var(--title-color);
+            cursor: pointer;
+        }
+
+        .radio-btn-p { color: var(--present); }
+        .radio-btn-a { color: var(--absent); }
+
+        .btn-submit { 
+            background: var(--title-color); 
+            color: var(--card-bg); 
+            border: none; 
+            padding: 14px; 
+            cursor: pointer; 
+            font-weight: 700; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%; 
+            margin-top: 20px; 
+            font-size: 13px; 
+            transition: opacity 0.2s;
+        }
+        .btn-submit:hover {
+            opacity: 0.9;
+        }
+
+        .history-section {
+            margin-top: 25px;
+        }
+
+        .history-header-bar {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+
+        .history-filters {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .btn-excel {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        .btn-excel:hover { background: #219653; }
+
+        .history-card { 
+            background: var(--panel-bg); 
+            border: 1px solid var(--border); 
+            margin-bottom: 10px; 
+        }
+
+        .card-header { 
+            padding: 12px 15px; 
+            cursor: pointer; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: var(--card-hdr-bg);
+        }
+
+        .card-body { 
+            padding: 15px; 
+            display: none; 
+            background: var(--card-body-bg); 
+            border-top: 1px solid var(--border); 
+        }
+        
+        .btn-edit { 
+            background: var(--input-bg); 
+            color: var(--text); 
+            border: 1px solid var(--border); 
+            padding: 5px 10px; 
+            font-size: 10px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            text-transform: uppercase;
+        }
+
+        .btn-delete { 
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            font-size: 14px; 
+            color: var(--text-muted); 
+            padding: 0 5px;
+        }
+        .btn-delete:hover { color: var(--absent); }
+
+        .view-toggle { 
+            background: var(--input-bg); 
+            color: var(--text);
+            border: 1px solid var(--border); 
+            padding: 4px 8px; 
+            font-size: 10px; 
+            cursor: pointer; 
+            float: right; 
+            text-transform: uppercase;
+        }
+        
+        .login-footer { 
+            margin-top: 30px; 
+            padding: 20px; 
+            background: var(--panel-bg); 
+            border: 1px solid var(--border); 
+            text-align: center; 
+        }
+
+        .login-footer p {
+            margin-bottom: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        .login-footer button {
+            background: var(--title-color);
+            color: var(--card-bg);
+        }
+
+        .tag { 
+            display: inline-block; 
+            padding: 4px 8px; 
+            margin: 3px; 
+            font-size: 11px; 
+            font-weight: 500; 
+        }
+        .p-tag { background: rgba(46, 125, 50, 0.15); color: #2e7d32; border: 1px solid rgba(76, 175, 80, 0.3); }
+        .a-tag { background: rgba(198, 40, 40, 0.15); color: #c62828; border: 1px solid rgba(244, 67, 54, 0.3); }
+        
+        [data-theme="dark"] .p-tag { color: #81c784; }
+        [data-theme="dark"] .a-tag { color: #e57373; }
+
+        .type-badge { 
+            color: var(--card-bg); 
+            background: var(--title-color);
+            padding: 2px 6px; 
+            font-size: 9px; 
+            font-weight: 700; 
+            text-transform: uppercase;
+            display: inline-block; 
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--primary); }
+        ::-webkit-scrollbar-thumb { background: var(--accent); }
+    </style>
 </head>
-<body>
+<body data-theme="dark">
 
 <div class="container">
-    <div class="top-nav">
-        <h2>ME Attendance Cloud</h2>
-        <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()">Dark Mode</button>
+    <div class="header-area">
+        <h2>ME & EE Attendance</h2>
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Theme">🌓</button>
     </div>
 
     <div id="adminPanel">
         <div class="status-bar">
-            <span class="status-active">● Editor Mode Active</span>
-            <button onclick="logout()" class="btn-logout">Logout</button>
+            <span style="color: var(--present); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">● Editor Mode Active</span>
+            <button onclick="logout()" style="background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 4px 10px; cursor: pointer; font-size: 11px; text-transform: uppercase;">Logout</button>
         </div>
 
         <div class="controls">
@@ -29,7 +451,7 @@
             </div>
             <div class="input-group">
                 <label>Subject</label>
-                <input type="text" id="subject" list="subjectList" placeholder="Subject...">
+                <input type="text" id="subject" list="subjectList" placeholder="Select or type subject...">
                 <datalist id="subjectList">
                     <option value="UHV (Universal Human Values)"></option>
                     <option value="Basic Electronics Engineering"></option>
@@ -63,7 +485,7 @@
         <div class="list-header">
             <div class="col-sn">SN</div>
             <div class="col-info">Student Details</div>
-            <div class="col-status">Status</div>
+            <div class="col-status" style="justify-content: flex-end; padding-right: 15px;">Status</div>
         </div>
         
         <div class="list-body-container">
@@ -75,19 +497,329 @@
 
     <div class="history-section">
         <div class="history-header-bar">
-            <h3>History Search</h3>
-            <input type="date" id="filterDate" onchange="fetchHistory(true)">
+            <h3 style="margin:0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">History & Export</h3>
+            <div class="history-filters">
+                <input type="date" id="filterDate" onchange="fetchHistory(true)" style="padding: 6px; font-size: 12px;">
+                <select id="filterSubject" onchange="fetchHistory(true)" style="padding: 6px; font-size: 12px; background: var(--input-bg); color: var(--text); border:1px solid var(--border);">
+                    <option value="UHV (Universal Human Values)">UHV</option>
+                    <option value="Basic Electronics Engineering">Basic Electronics</option>
+                    <option value="Mechanics of Deformable Solids">MDS</option>
+                    <option value="Engineering Mechanics">Engg Mechanics</option>
+                    <option value="Mathematics-3">Maths-3</option>
+                    <option value="Applied Thermodynamics">ATD</option>
+                    <option value="Environmental Science">EVS</option>
+                    <option value="Mechanics of Deformable Solids Lab">MDS Lab</option>
+                    <option value="Engineering Mechanics Lab">EM Lab</option>
+                    <option value="Applied Thermodynamics Lab">ATD Lab</option>
+                    <option value="Basic Electronics Engineering Lab">BEE Lab</option>
+                    <option value="Seminar / Presentation">Seminar</option>
+                    <option value="Mentor / Mentee">Mentor/Mentee</option>
+                    <option value="Others">Others</option>
+                </select>
+                <button class="btn-excel" onclick="exportFilteredToExcel()">Export Excel</button>
+            </div>
         </div>
-        <div id="logsView" class="logs-loading">Loading logs...</div>
+        <div id="logsView" style="color: var(--text-muted); text-align: center; padding: 10px 0;">Loading logs...</div>
     </div>
 
     <div class="login-footer" id="loginBox">
         <p>Login to add or edit attendance</p>
-        <input type="password" id="adminPass" placeholder="••••••••"><br>
-        <button onclick="login()" class="btn-login">Admin Login</button>
+        <input type="password" id="adminPass" placeholder="••••••••" style="text-align: center; max-width: 200px; margin-bottom: 12px;"><br>
+        <button onclick="login()" style="padding: 10px 24px; border: none; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; cursor: pointer;">Admin Login</button>
     </div>
 </div>
 
-<script src="script.js"></script>
+<script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBxDdaeuRPuiDO2JYHFNfLzr7HcnzmrgAc",
+      authDomain: "me-attendance-dbe63.firebaseapp.com",
+      databaseURL: "https://me-attendance-dbe63-default-rtdb.firebaseio.com",
+      projectId: "me-attendance-dbe63",
+      storageBucket: "me-attendance-dbe63.firebasestorage.app",
+      messagingSenderId: "227683930891",
+      appId: "1:227683930891:web:fddd8b6d11bc9ef98c880e"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let highlightMode = 'name', isAdmin = false, editingKey = null, loadedPres = [], globalLogs = {};
+    let students = [
+        {id: "B2555R10102001", name: "ABHISHEK KUMAR"}, {id: "B2555R10102002", name: "SANJEEV KUMAR"},
+        {id: "B2555R10102005", name: "SATEESH KUMAR CHAUDHARI"}, {id: "B2555R10102006", name: "AJEET SINGH"},
+        {id: "B2555R10102007", name: "KARAN KUMAR VERMA"}, {id: "B2555R10102008", name: "SHIVENDRA PRATAP VERMA"},
+        {id: "B2555R10102010", name: "VIJESH RAGHUVANSHI"}, {id: "B2555R10102011", name: "AMAR VERMA"},
+        {id: "B2555R10102012", name: "AMOL PANDEY"}, {id: "B2555R10102013", name: "KISHAN VERMA"},
+        {id: "B2555R10102014", name: "ANSHIL VISHWAKARMA"}, {id: "B2555R10102017", name: "RAHUL SAKET"},
+        {id: "B2555R10102018", name: "VINAY CHAUDHARY"}, {id: "B2555R10102019", name: "SANDHYA PRAJAPATI"},
+        {id: "B2555R10102020", name: "SATYAM YADAV"}, {id: "B2555R10102021", name: "GAURAV KUSHWAHA"},
+        {id: "B2555R10102022", name: "DURGESH PRAJAPATI"}, {id: "B2555R10102023", name: "SACHIN KUSHWAHA"},
+        {id: "B2555R10102024", name: "SINGH SEJAL VIJAY"}, {id: "B2555R10102025", name: "ARYAN SINGH"},
+        {id: "B2555R10102026", name: "AMAN KUSHWAHA"}, {id: "B2555R10102027", name: "AMAN VISHWAKARMA"},
+        {id: "B2555R10102028", name: "SAHIL SAKET"}, {id: "B2555R10102029", name: "LUCKY VERMA"},
+        {id: "B2555R10102030", name: "ANSH DAHIYA"}, {id: "B2555R10102031", name: "AJAY KUMAR CHAUDHARY"},
+        {id: "B2555R10102033", name: "PRIYANSHU KUSHWAHA"}, {id: "B2555R10102034", name: "ABHISHEK PRAJAPATI"},
+        {id: "B2555R10102035", name: "SUMIT KUSHWAHA"}, {id: "B2555R10102037", name: "ADITYA SINGH GAUTAM"},
+        {id: "B2555R10102038", name: "SANJU AHIRWAR"}, {id: "B2555R10102039", name: "PARTH SONI"},
+        {id: "B2555R10102041", name: "HARISHANKAR PATEL"}, {id: "B2555R10102042", name: "ANUJ BARMAN"},
+        {id: "B2555R10102043", name: "MOHIT BANSAL"}, {id: "B2555R10102044", name: "RAHUL KUSHWAHA"},
+        {id: "B2555R10102046", name: "SHREYESH SINGH"}, {id: "B2555R10102047", name: "LAKKI MOHAMMAD"},
+        {id: "B2555R10102048", name: "ANAND SAHU"}, {id: "B2555R10102049", name: "SHIVAM KUSHWAHA"},
+        /* EE Students */
+        {id: "B2555R10103002", name: "DIPAK KUMAR"}, {id: "B2555R10103003", name: "VIVEK YADAV"},
+        {id: "B2555R10103004", name: "YUVRAJ SAHU"}, {id: "B2555R10103005", name: "SHIVAM RAJAK"},
+        {id: "B2555R10103006", name: "AVADH RAJ SAHU"}, {id: "B2555R10103007", name: "SACHIN KUSHWAHA"},
+        {id: "B2555R10103008", name: "DINKAR SONDHIYA"}, {id: "B2555R10103009", name: "GAURAV CHAURASIYA"},
+        {id: "B2555R10103010", name: "SATYAM SONI"}, {id: "B2555R10103011", name: "VISHWAJEET SINGH"},
+        {id: "B2555R10103012", name: "AYUSH RAJAK"}, {id: "B2555R10103015", name: "PRINSU SINGH"},
+        {id: "B2555R10103016", name: "SHUBHAM GAUTAM"}, {id: "B2555R10103017", name: "SHIVANSHU CHAUDHARI"},
+        {id: "B2555R10103018", name: "ARUN KUSHWAHA"}, {id: "B2555R10103019", name: "UTRESH SAKET"},
+        {id: "B2555R10103021", name: "RINKU PRAJAPATI"}, {id: "B2555R10103022", name: "ABHISHEK SONI"},
+        {id: "B2555R10103023", name: "DEVANSI SINGH"}, {id: "B2555R10103024", name: "ATUL KUSHWAHA"},
+        {id: "B2555R10103025", name: "JAGBEER YADAV"}, {id: "B2555R10103026", name: "SUJEET KUMAR"},
+        {id: "B2555R10103027", name: "AMIT KUMAR PRAJAPATI"}, {id: "B2555R10103028", name: "VIVEK CHAUDHARY"},
+        {id: "B2555R10103030", name: "AJAY TRIPATHI"}, {id: "B2555R10103034", name: "ABHAY SINGH"},
+        {id: "B2555R10103035", name: "PRAKASH DOHAR"}, {id: "B2555R10103036", name: "AMIT PATEL"},
+        {id: "B2555R10103037", name: "ANIKET RAJAK"}, {id: "B2555R10103038", name: "PRANSHU PAL"},
+        {id: "B2555R10103039", name: "NITESH KUMAR VERMA"}, {id: "B2555R10103040", name: "SAGAR PATEL"},
+        {id: "B2555R10103041", name: "ARPIT SAHU"}, {id: "B2555R10103042", name: "ANSH SINGH"},
+        {id: "B2555R10103043", name: "SACHIN SAHU"}, {id: "B2555R10103044", name: "ASTITVA DWIVEDI"},
+        {id: "B2555R10103048", name: "SHITESH KUSHWAHA"}
+    ];
+
+    window.onload = () => {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('classDate').value = today;
+        updateView('name');
+        fetchHistory(false);
+        
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.body.setAttribute('data-theme', savedTheme);
+    };
+
+    function toggleTheme() {
+        const currentTheme = document.body.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        document.body.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+    }
+
+    function login() {
+        // Password updated to aks123
+        if(document.getElementById('adminPass').value === "aks123") {
+            isAdmin = true;
+            document.getElementById('adminPanel').style.display = "block";
+            document.getElementById('loginBox').style.display = "none";
+            fetchHistory(false);
+            alert("Login Successful");
+        } else alert("Invalid Password");
+    }
+
+    function logout() {
+        isAdmin = false;
+        document.getElementById('adminPanel').style.display = "none";
+        document.getElementById('loginBox').style.display = "block";
+        fetchHistory(false);
+    }
+
+    function updateView(mode) {
+        highlightMode = mode;
+        document.getElementById('sortName').className = (mode === 'name') ? 'btn-sort active' : 'btn-sort';
+        document.getElementById('sortCode').className = (mode === 'id') ? 'btn-sort active' : 'btn-sort';
+        if(mode === 'name') students.sort((a,b) => a.name.localeCompare(b.name));
+        else students.sort((a,b) => a.id.localeCompare(b.id));
+        renderList();
+    }
+
+    function renderList() {
+        const listBody = document.getElementById('listBody');
+        listBody.innerHTML = students.map((s, index) => {
+            const isP = loadedPres.includes(s.id) || loadedPres.includes(s.name);
+            return `<div class="list-row">
+                <div class="col-sn">${index + 1}</div>
+                <div class="col-info">
+                    <span class="${highlightMode==='name'?'focus-main':'focus-sub'}">${s.name}</span>
+                    <span class="${highlightMode==='id'?'focus-main':'focus-sub'}">${s.id}</span>
+                </div>
+                <div class="col-status">
+                    <label class="radio-btn radio-btn-p"><input type="radio" name="st_${s.id}" value="P" ${isP?'checked':''}> P</label>
+                    <label class="radio-btn radio-btn-a"><input type="radio" name="st_${s.id}" value="A" ${!isP?'checked':''}> A</label>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function pushToCloud() {
+        const date = document.getElementById('classDate').value;
+        const sub = document.getElementById('subject').value || "No Subject";
+        const isExtra = document.getElementById('isExtraLecture').checked;
+        
+        let pL = [], aL = [];
+        let sortedToSave = [...students].sort((a,b) => a.id.localeCompare(b.id));
+
+        sortedToSave.forEach(s => {
+            const isP = document.querySelector(`input[name="st_${s.id}"]:checked`).value === 'P';
+            let entry = { n: s.name, id: s.id, c: s.id.slice(-4) };
+            isP ? pL.push(entry) : aL.push(entry);
+        });
+
+        const data = { date, sub, isExtra, pL, aL, ts: Date.now() };
+        
+        if(editingKey) {
+            database.ref('attendance').child(editingKey).set(data)
+            .then(() => { alert("Updated!"); resetForm(); })
+            .catch(err => alert("Error saving data: " + err.message));
+        } else {
+            database.ref('attendance').push(data)
+            .then(() => { alert("Saved!"); resetForm(); })
+            .catch(err => alert("Error saving data: " + err.message));
+        }
+    }
+
+    function resetForm() {
+        editingKey = null; loadedPres = [];
+        document.getElementById('mainSaveBtn').innerText = "Finalize & Save";
+        document.getElementById('subject').value = "";
+        document.getElementById('isExtraLecture').checked = false;
+        updateView(highlightMode);
+    }
+
+    function fetchHistory(filter) {
+        let ref = database.ref('attendance');
+        ref.on('value', snap => {
+            globalLogs = snap.val() || {};
+            renderHistoryLogs();
+        }, error => {
+            console.error(error);
+            document.getElementById('logsView').innerHTML = `<div style="color:#e57373; padding:15px; border:1px solid rgba(244,67,54,0.3); background:rgba(198,40,40,0.2); text-align:center;">
+                <b>Database Access Denied!</b>
+            </div>`;
+        });
+    }
+
+    function renderHistoryLogs() {
+        const fDate = document.getElementById('filterDate').value;
+        const fSub = document.getElementById('filterSubject').value;
+        const view = document.getElementById('logsView');
+        
+        let keys = Object.keys(globalLogs);
+        
+        if(fDate) keys = keys.filter(k => globalLogs[k].date === fDate);
+        if(fSub) keys = keys.filter(k => globalLogs[k].sub === fSub);
+        
+        if(keys.length === 0) { view.innerHTML = "<div style='padding:15px;'>No records found.</div>"; return; }
+        
+        view.innerHTML = keys.reverse().map(key => {
+            const item = globalLogs[key];
+            let badgeHTML = item.isExtra ? `<span class="type-badge">Extra Lecture</span>` : "";
+
+            return `<div class="history-card">
+                <div class="card-header">
+                    ${isAdmin ? `<button class="btn-delete" onclick="deleteRec('${key}')">🗑️</button>` : ''}
+                    <div style="flex:1; display:flex; justify-content:space-between; align-items:center; margin:0 10px; gap:8px;" onclick="this.parentElement.nextElementSibling.style.display=(this.parentElement.nextElementSibling.style.display==='block'?'none':'block')">
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; line-height:1.2;">
+                            ${badgeHTML} 
+                            <b style="word-break: break-word; color:var(--title-color);">${item.sub}</b>
+                        </div>
+                        <span style="white-space:nowrap; font-size:11px; color:var(--text-muted);">${item.date} (${item.pL?item.pL.length:0}P) ▾</span>
+                    </div>
+                    ${isAdmin ? `<button class="btn-edit" onclick="editRec('${key}')">EDIT</button>` : ''}
+                </div>
+                <div class="card-body">
+                    <button class="view-toggle" onclick="toggleTags(this)">Show Codes</button>
+                    <div style="clear:both; margin-top:10px;"></div>
+                    <b style="color:var(--present);">Present:</b><br><div class="p-list" style="margin-top:5px;">${renderTags(item.pL, 'p')}</div><br>
+                    <b style="color:var(--absent);">Absent:</b><br><div class="a-list" style="margin-top:5px;">${renderTags(item.aL, 'a')}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function exportFilteredToExcel() {
+        const fSub = document.getElementById('filterSubject').value;
+        const fDate = document.getElementById('filterDate').value;
+        
+        let keys = Object.keys(globalLogs);
+        if(fSub) keys = keys.filter(k => globalLogs[k].sub === fSub);
+        if(fDate) keys = keys.filter(k => globalLogs[k].date === fDate);
+        
+        if(keys.length === 0) {
+            alert("Export karne ke liye koi records nahi mile!");
+            return;
+        }
+
+        keys.sort((a,b) => globalLogs[a].date.localeCompare(globalLogs[b].date));
+
+        let allStudentsMap = {};
+        students.forEach(s => {
+            allStudentsMap[s.id] = { "Roll No": s.id, "Student Name": s.name };
+        });
+
+        keys.forEach(key => {
+            const lecture = globalLogs[key];
+            const headerName = `${lecture.date} (${lecture.isExtra ? 'Extra' : 'Regular'})`;
+            
+            const presentIDs = (lecture.pL || []).map(p => p.id);
+            const absentIDs = (lecture.aL || []).map(a => a.id);
+
+            Object.keys(allStudentsMap).forEach(id => {
+                if(presentIDs.includes(id)) {
+                    allStudentsMap[id][headerName] = "P";
+                } else if(absentIDs.includes(id)) {
+                    allStudentsMap[id][headerName] = "A";
+                } else {
+                    allStudentsMap[id][headerName] = "-";
+                }
+            });
+        });
+
+        const reportRows = Object.values(allStudentsMap);
+        const ws = XLSX.utils.json_to_sheet(reportRows);
+        
+        const colWidths = Object.keys(reportRows[0] || {}).map((key, index) => {
+            if (index === 0) return { wch: 17 };
+            if (index === 1) {
+                const maxLen = Math.max(key.length, ...reportRows.map(row => (row[key] ? row[key].toString().length : 0)));
+                return { wch: maxLen + 2 };
+            }
+            return { wch: 10 };
+        });
+        ws['!cols'] = colWidths;
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Attendance Sheet");
+
+        let filename = "Attendance_Report";
+        if(fSub) filename += "_" + fSub.replace(/[^a-zA-Z0-9]/g, "_");
+        if(fDate) filename += "_" + fDate;
+        filename += ".xlsx";
+
+        XLSX.writeFile(wb, filename);
+    }
+
+    function editRec(key) {
+        database.ref('attendance').child(key).once('value', snap => {
+            const d = snap.val();
+            editingKey = key;
+            loadedPres = (d.pL || []).map(p => p.id || p.n);
+            document.getElementById('classDate').value = d.date;
+            document.getElementById('subject').value = d.sub;
+            document.getElementById('isExtraLecture').checked = d.isExtra === true;
+            document.getElementById('mainSaveBtn').innerText = "Update Now";
+            renderList();
+            window.scrollTo({top:0, behavior:'smooth'});
+        });
+    }
+
+    function deleteRec(k) { if(confirm("Delete Record?")) database.ref('attendance').child(k).remove(); }
+    function renderTags(list, type) { if(!list) return "None"; return list.map(item => `<span class="tag ${type}-tag" data-full="${item.n}" data-code="${item.c || '??'}">${item.n}</span>`).join(''); }
+    
+    function toggleTags(btn) {
+        const body = btn.parentElement;
+        const tags = body.querySelectorAll('.tag');
+        const isCodeMode = btn.innerText === "Show Names";
+        tags.forEach(t => t.innerText = isCodeMode ? t.getAttribute('data-full') : t.getAttribute('data-code'));
+        btn.innerText = isCodeMode ? "Show Codes" : "Show Names";
+    }
+</script>
 </body>
 </html>
