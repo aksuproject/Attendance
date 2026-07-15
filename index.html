@@ -632,7 +632,6 @@
         } else alert("Invalid Password");
     }
 
-    // Removed direct page refresh to keep theme state secure during signouts
     function logout() {
         isAdmin = false;
         document.getElementById('adminPanel').style.display = "none";
@@ -718,14 +717,12 @@
         });
     }
 
-    // UPDATED MODULE: Shows logs independently of chosen export subject
     function renderHistoryLogs() {
         const fDate = document.getElementById('filterDate').value;
         const view = document.getElementById('logsView');
         
         let keys = Object.keys(globalLogs);
         
-        // Dynamic Date filter only
         if(fDate) keys = keys.filter(k => globalLogs[k].date === fDate);
         
         if(keys.length === 0) { view.innerHTML = "<div style='padding:15px;'>No records found in database.</div>"; return; }
@@ -756,7 +753,7 @@
         }).join('');
     }
 
-    // EXCEL EXTRACT ENGINE (Runs isolated via Extraction Dropdown)
+    // EXCEL EXTRACT ENGINE WITH CONDITIONAL DYNAMIC FILTERING
     function exportFilteredToExcel() {
         const fSub = document.getElementById('filterSubject').value;
         
@@ -770,7 +767,20 @@
 
         keys.sort((a,b) => globalLogs[a].date.localeCompare(globalLogs[b].date));
 
-        const currentFullSheetList = [...meStudents, ...eeStudents];
+        // Check whether ANY of the records under this subject actually contained an EE student
+        let hasEEData = false;
+        keys.forEach(key => {
+            const lecture = globalLogs[key];
+            const hasEEPresent = (lecture.pL || []).some(p => p.id && p.id.includes("10103"));
+            const hasEEAbsent = (lecture.aL || []).some(a => a.id && a.id.includes("10103"));
+            if (hasEEPresent || hasEEAbsent) {
+                hasEEData = true;
+            }
+        });
+
+        // Dynamic base row selection mapping logic
+        const currentFullSheetList = hasEEData ? [...meStudents, ...eeStudents] : [...meStudents];
+        
         let allStudentsMap = {};
         currentFullSheetList.forEach(s => {
             allStudentsMap[s.id] = { "Roll No": s.id, "Student Name": s.name };
@@ -827,7 +837,6 @@
             const totalA = (d.aL || []).some(a => a.id && a.id.includes("10103"));
             document.getElementById('includeEE').checked = (totalP || totalA);
 
-            document.getElementById('mainSaveBtn').innerText = "Update Now";
             renderList();
             window.scrollTo({top:0, behavior:'smooth'});
         });
