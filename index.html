@@ -6,7 +6,11 @@
     <title>ME & EE Attendance Cloud</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <!-- SheetJS Library for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- jsPDF and AutoTable Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <style>
         :root { 
             --present: #2ecc71; 
@@ -312,24 +316,35 @@
 
         .filter-row {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
             margin-bottom: 15px;
+            flex-wrap: wrap;
         }
 
         .btn-excel {
             background: #27ae60;
             color: white;
             border: none;
-            padding: 10px 15px;
+            padding: 10px 12px;
             font-size: 12px;
             font-weight: bold;
             text-transform: uppercase;
             cursor: pointer;
             letter-spacing: 0.5px;
-            white-space: nowrap;
         }
-        .btn-excel:hover { background: #219653; }
+        
+        .btn-pdf {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+        }
 
         .history-card { 
             background: var(--panel-bg); 
@@ -442,6 +457,7 @@
         <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Theme">🌓</button>
     </div>
 
+    <!-- Admin Panel -->
     <div id="adminPanel">
         <div class="status-bar">
             <span style="color: var(--present); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">● Editor Mode Active</span>
@@ -505,10 +521,11 @@
         <button type="button" class="btn-submit" id="mainSaveBtn" onclick="pushToCloud()">Finalize & Save</button>
     </div>
 
+    <!-- MODULE 1: DATA OPTIONS -->
     <div class="section-box">
-        <h3 class="section-title">Excel Data Extraction</h3>
+        <h3 class="section-title">Data Extraction Options</h3>
         <div class="filter-row">
-            <select id="filterSubject" style="padding: 10px; background: var(--input-bg); color: var(--text); border:1px solid var(--border);">
+            <select id="filterSubject" style="padding: 10px; background: var(--input-bg); color: var(--text); border:1px solid var(--border); flex: 1; min-width: 150px;">
                 <option value="UHV (Universal Human Values)">UHV</option>
                 <option value="Basic Electronics Engineering">Basic Electronics</option>
                 <option value="Mechanics of Deformable Solids">MDS</option>
@@ -524,10 +541,12 @@
                 <option value="Mentor / Mentee">Mentor/Mentee</option>
                 <option value="Others">Others</option>
             </select>
-            <button class="btn-excel" onclick="exportFilteredToExcel()">Download Sheet</button>
+            <button class="btn-excel" onclick="exportFilteredToExcel()">Excel Sheet</button>
+            <button class="btn-pdf" onclick="exportFilteredToPDF()">Export PDF</button>
         </div>
     </div>
 
+    <!-- MODULE 2: HISTORY VIEW -->
     <div class="section-box">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <h3 class="section-title" style="margin:0;">Attendance Logs History</h3>
@@ -536,6 +555,7 @@
         <div id="logsView" style="color: var(--text-muted); text-align: center; padding: 10px 0;">Loading logs...</div>
     </div>
 
+    <!-- Login Box -->
     <div class="login-footer" id="loginBox">
         <p>Login to add or edit attendance</p>
         <input type="password" id="adminPass" placeholder="••••••••" style="text-align: center; max-width: 200px; margin-bottom: 12px;"><br>
@@ -639,16 +659,6 @@
         renderHistoryLogs();
     }
 
-    // Date Helper to format YYYY-MM-DD to DD/MM/YYYY
-    function formatExcelDate(dateStr) {
-        if(!dateStr) return "";
-        const parts = dateStr.split('-');
-        if(parts.length === 3) {
-            return `${parts[2]}/${parts[1]}/${parts[0]}`;
-        }
-        return dateStr;
-    }
-
     function updateView(mode) {
         highlightMode = mode;
         document.getElementById('sortName').className = (mode === 'name') ? 'btn-sort active' : 'btn-sort';
@@ -732,7 +742,6 @@
         const view = document.getElementById('logsView');
         
         let keys = Object.keys(globalLogs);
-        
         if(fDate) keys = keys.filter(k => globalLogs[k].date === fDate);
         
         if(keys.length === 0) { view.innerHTML = "<div style='padding:15px;'>No records found in database.</div>"; return; }
@@ -740,6 +749,12 @@
         view.innerHTML = keys.reverse().map(key => {
             const item = globalLogs[key];
             let badgeHTML = item.isExtra ? `<span class="type-badge">Extra Lecture</span>` : "";
+            
+            let displayDate = item.date;
+            if(item.date && item.date.includes('-')) {
+                const parts = item.date.split('-');
+                displayDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
 
             return `<div class="history-card">
                 <div class="card-header">
@@ -749,7 +764,7 @@
                             ${badgeHTML} 
                             <b style="word-break: break-word; color:var(--title-color);">${item.sub || 'Blank Subject'}</b>
                         </div>
-                        <span style="white-space:nowrap; font-size:11px; color:var(--text-muted);">${formatExcelDate(item.date)} (${item.pL?item.pL.length:0}P) ▾</span>
+                        <span style="white-space:nowrap; font-size:11px; color:var(--text-muted);">${displayDate} (${item.pL?item.pL.length:0}P) ▾</span>
                     </div>
                     ${isAdmin ? `<button class="btn-edit" onclick="editRec('${key}')">EDIT</button>` : ''}
                 </div>
@@ -763,75 +778,223 @@
         }).join('');
     }
 
-    // EXCEL EXTRACT ENGINE WITH CONDITIONAL DYNAMIC FILTERING & DATE REMAPPING
-    function exportFilteredToExcel() {
+    function buildMatrixData() {
         const fSub = document.getElementById('filterSubject').value;
+        let keys = Object.keys(globalLogs).filter(k => globalLogs[k].sub === fSub);
         
-        let keys = Object.keys(globalLogs);
-        keys = keys.filter(k => globalLogs[k].sub === fSub);
-        
-        if(keys.length === 0) {
-            alert("Select kiye hue subject '" + fSub + "' ka koi data nahi mila!");
-            return;
-        }
+        if(keys.length === 0) return null;
 
-        keys.sort((a,b) => globalLogs[a].date.localeCompare(globalLogs[b].date));
+        keys.sort((a, b) => globalLogs[a].date.localeCompare(globalLogs[b].date));
+
+        const firstLogDate = new Date(globalLogs[keys[0]].date);
+        const year = firstLogDate.getFullYear();
+        const month = firstLogDate.getMonth();
+
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const weekdayNames = ["Su", "M", "Tu", "W", "Th", "F", "Sa"];
+
+        const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+        const monthDurationHeader = `1 ${monthNames[month]} - ${totalDaysInMonth} ${monthNames[month]} ${year}`;
+
+        const logsByDateMap = {};
+        keys.forEach(key => {
+            const log = globalLogs[key];
+            const dayNum = parseInt(log.date.split('-')[2], 10);
+            logsByDateMap[dayNum] = log; 
+        });
+
+        return { year, month, totalDaysInMonth, weekdayNames, monthDurationHeader, logsByDateMap, fSub };
+    }
+
+    function exportFilteredToExcel() {
+        const matrix = buildMatrixData();
+        if(!matrix) { alert("Data nahi mila!"); return; }
 
         let hasEEData = false;
-        keys.forEach(key => {
-            const lecture = globalLogs[key];
-            const hasEEPresent = (lecture.pL || []).some(p => p.id && p.id.includes("10103"));
-            const hasEEAbsent = (lecture.aL || []).some(a => a.id && a.id.includes("10103"));
-            if (hasEEPresent || hasEEAbsent) {
+        Object.keys(matrix.logsByDateMap).forEach(d => {
+            const l = matrix.logsByDateMap[d];
+            if ((l.pL || []).some(p => p.id && p.id.includes("10103")) || (l.aL || []).some(a => a.id && a.id.includes("10103"))) {
                 hasEEData = true;
             }
         });
+        const activeBaseStudents = hasEEData ? [...meStudents, ...eeStudents] : [...meStudents];
+        activeBaseStudents.sort((a, b) => a.id.localeCompare(b.id));
 
-        const currentFullSheetList = hasEEData ? [...meStudents, ...eeStudents] : [...meStudents];
-        
-        let allStudentsMap = {};
-        currentFullSheetList.forEach(s => {
-            allStudentsMap[s.id] = { "Roll No": s.id, "Student Name": s.name };
+        const aoaData = [];
+        const row1 = ["", ""];
+        for(let d=1; d<=matrix.totalDaysInMonth; d++) row1.push(d === 1 ? matrix.monthDurationHeader : "");
+        aoaData.push(row1);
+
+        const row2 = ["Roll No", "Student Name"];
+        for(let d=1; d<=matrix.totalDaysInMonth; d++) {
+            const day = new Date(matrix.year, matrix.month, d).getDay();
+            row2.push(matrix.weekdayNames[day]);
+        }
+        aoaData.push(row2);
+
+        const row3 = ["", ""];
+        for(let d=1; d<=matrix.totalDaysInMonth; d++) row3.push(d);
+        aoaData.push(row3);
+
+        activeBaseStudents.forEach(s => {
+            const studentRow = [s.id, s.name];
+            for(let d=1; d<=matrix.totalDaysInMonth; d++) {
+                if(matrix.logsByDateMap[d]) {
+                    const l = matrix.logsByDateMap[d];
+                    if((l.pL || []).map(p=>p.id).includes(s.id)) studentRow.push("P");
+                    else if((l.aL || []).map(a=>a.id).includes(s.id)) studentRow.push("A");
+                    else studentRow.push("");
+                } else studentRow.push("");
+            }
+            aoaData.push(studentRow);
         });
 
-        keys.forEach(key => {
-            const lecture = globalLogs[key];
-            const cleanDate = formatExcelDate(lecture.date);
-            // Modified Header matching configuration rule: regular removed, extra kept
-            const headerName = lecture.isExtra ? `${cleanDate} (Extra)` : `${cleanDate}`;
-            
-            const presentIDs = (lecture.pL || []).map(p => p.id);
-            const absentIDs = (lecture.aL || []).map(a => a.id);
+        const ws = XLSX.utils.aoa_to_sheet(aoaData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Attendance Grid");
 
-            Object.keys(allStudentsMap).forEach(id => {
-                if(presentIDs.includes(id)) {
-                    allStudentsMap[id][headerName] = "P";
-                } else if(absentIDs.includes(id)) {
-                    allStudentsMap[id][headerName] = "A";
-                } else {
-                    allStudentsMap[id][headerName] = "-";
+        const colWidths = [{ wch: 15 }, { wch: 22 }];
+        for(let d=1; d<=matrix.totalDaysInMonth; d++) colWidths.push({ wch: 4 });
+        ws['!cols'] = colWidths;
+        ws['!merges'] = [{ s: { r: 0, c: 2 }, e: { r: 0, c: matrix.totalDaysInMonth + 1 } }];
+
+        XLSX.writeFile(wb, "Attendance_Report_" + matrix.fSub.replace(/[^a-zA-Z0-9]/g, "_") + ".xlsx");
+    }
+
+    // EXPANDED FULL-WIDTH PDF ENGINE (FILLS 100% HORIZONTAL SPACE + CLEARER FONTS)
+    function exportFilteredToPDF() {
+        try {
+            const matrix = buildMatrixData();
+            if(!matrix) { alert("Select kiye hue subject ka data available nahi hai!"); return; }
+
+            let meList = [...meStudents].sort((a, b) => a.id.localeCompare(b.id));
+            let eeList = [...eeStudents].sort((a, b) => a.id.localeCompare(b.id));
+
+            let hasEE = false;
+            Object.keys(matrix.logsByDateMap).forEach(d => {
+                const lecture = matrix.logsByDateMap[d];
+                if((lecture.pL || []).some(p => p.id && p.id.includes("10103")) || (lecture.aL || []).some(a => a.id && a.id.includes("10103"))) {
+                    hasEE = true;
                 }
             });
-        });
 
-        const reportRows = Object.values(allStudentsMap);
-        const ws = XLSX.utils.json_to_sheet(reportRows);
-        
-        const colWidths = Object.keys(reportRows[0] || {}).map((key, index) => {
-            if (index === 0) return { wch: 17 };
-            if (index === 1) {
-                const maxLen = Math.max(key.length, ...reportRows.map(row => (row[key] ? row[key].toString().length : 0)));
-                return { wch: maxLen + 2 };
+            const { jsPDF } = window.jspdf;
+            
+            // Native A4 Landscape Document
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            // 20 students partition chunking
+            let chunks = [];
+            for (let i = 0; i < meList.length; i += 20) {
+                chunks.push({ branch: "MECHANICAL ENGINEERING (ME)", students: meList.slice(i, i + 20) });
             }
-            return { wch: 10 };
-        });
-        ws['!cols'] = colWidths;
 
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Attendance Sheet");
+            if (hasEE) {
+                for (let i = 0; i < eeList.length; i += 20) {
+                    chunks.push({ branch: "ELECTRICAL ENGINEERING (EE)", students: eeList.slice(i, i + 20) });
+                }
+            }
 
-        let filename = "Attendance_Report_" + fSub.replace(/[^a-zA-Z0-9]/g, "_") + ".xlsx";
-        XLSX.writeFile(wb, filename);
+            chunks.forEach((chunk, pageIndex) => {
+                if (pageIndex > 0) doc.addPage('a4', 'landscape');
+
+                const headerRow1 = [
+                    { content: '', colSpan: 2, styles: { fillColor: [245, 245, 245] } },
+                    { content: matrix.monthDurationHeader, colSpan: matrix.totalDaysInMonth, styles: { halign: 'center', fillColor: [234, 234, 234], fontStyle: 'bold' } }
+                ];
+
+                const headerRow2 = ['Roll No', 'Student Name'];
+                const headerRow3 = ['', ''];
+
+                for (let d = 1; d <= matrix.totalDaysInMonth; d++) {
+                    const dayIdx = new Date(matrix.year, matrix.month, d).getDay();
+                    headerRow2.push(matrix.weekdayNames[dayIdx]);
+                    headerRow3.push(d.toString());
+                }
+
+                const bodyRows = chunk.students.map(s => {
+                    const row = [s.id, s.name];
+                    for (let d = 1; d <= matrix.totalDaysInMonth; d++) {
+                        let statusChar = "";
+                        if (matrix.logsByDateMap[d]) {
+                            const lecture = matrix.logsByDateMap[d];
+                            if ((lecture.pL || []).map(p => p.id).includes(s.id)) statusChar = "P";
+                            else if ((lecture.aL || []).map(a => a.id).includes(s.id)) statusChar = "A";
+                        }
+                        row.push(statusChar);
+                    }
+                    return row;
+                });
+
+                // PROPORTIONALLY EXPANDED WIDTHS (Fills 289mm total printable A4 Landscape width)
+                // Total printable = 297mm width - 8mm total margins = 289mm
+                // 28mm (Roll No) + 53mm (Name) + 31 days * 6.7mm = 288.7mm
+                const colStyles = {
+                    0: { cellWidth: 28, halign: 'left' },
+                    1: { cellWidth: 53, halign: 'left', fontStyle: 'bold' }
+                };
+
+                for (let d = 2; d <= matrix.totalDaysInMonth + 1; d++) {
+                    colStyles[d] = { cellWidth: 6.7, halign: 'center' };
+                }
+
+                doc.autoTable({
+                    head: [headerRow1, headerRow2, headerRow3],
+                    body: bodyRows,
+                    startY: 12,
+                    margin: { top: 12, bottom: 4, left: 4, right: 4 },
+                    styles: {
+                        fontSize: 7.8, // Bigger text for maximum legibility
+                        cellPadding: 1.8, // Comfortable padding
+                        lineWidth: 0.15,
+                        lineColor: [40, 40, 40],
+                        textColor: [0, 0, 0]
+                    },
+                    headStyles: {
+                        fillColor: [245, 245, 245],
+                        textColor: [0, 0, 0],
+                        fontStyle: 'bold',
+                        halign: 'center'
+                    },
+                    columnStyles: colStyles,
+                    didDrawPage: function(data) {
+                        // Title Header placed in space
+                        doc.setFontSize(10);
+                        doc.setFont(undefined, 'bold');
+                        doc.text(`SUBJECT: ${matrix.fSub.toUpperCase()} | BRANCH: ${chunk.branch}`, 148, 7, { align: 'center' });
+                    },
+                    didParseCell: function(data) {
+                        if (data.section === 'body' && data.column.index >= 2) {
+                            if (data.cell.raw === 'P') {
+                                data.cell.styles.textColor = [39, 174, 96];
+                                data.cell.styles.fontStyle = 'bold';
+                            } else if (data.cell.raw === 'A') {
+                                data.cell.styles.textColor = [198, 40, 40];
+                                data.cell.styles.fontStyle = 'bold';
+                            }
+                        }
+                        if (data.column.index >= 2) {
+                            const dayNum = parseInt(data.table.columns[data.column.index].raw || "0", 10);
+                            if (dayNum > 0) {
+                                const dayIdx = new Date(matrix.year, matrix.month, dayNum).getDay();
+                                if (dayIdx === 0) {
+                                    data.cell.styles.fillColor = [255, 235, 238];
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+
+            doc.save(`Attendance_${matrix.fSub.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`);
+        } catch(e) {
+            alert("PDF Download Error: " + e.message);
+            console.error(e);
+        }
     }
 
     function editRec(key) {
