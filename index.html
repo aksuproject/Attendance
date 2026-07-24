@@ -106,6 +106,28 @@
             transform: scale(1.1);
         }
 
+        /* Adjusted Login Footer Spacing */
+        .login-footer { 
+            margin-bottom: 25px; 
+            padding: 20px; 
+            background: var(--panel-bg); 
+            border: 1px solid var(--border); 
+            text-align: center; 
+        }
+
+        .login-footer p {
+            margin-bottom: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        .login-footer button {
+            background: var(--title-color);
+            color: var(--card-bg);
+        }
+
         #adminPanel { 
             display: none; 
             border-bottom: 1px dashed var(--border); 
@@ -399,27 +421,6 @@
             float: right; 
             text-transform: uppercase;
         }
-        
-        .login-footer { 
-            margin-top: 30px; 
-            padding: 20px; 
-            background: var(--panel-bg); 
-            border: 1px solid var(--border); 
-            text-align: center; 
-        }
-
-        .login-footer p {
-            margin-bottom: 12px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-size: 11px;
-            letter-spacing: 0.5px;
-        }
-
-        .login-footer button {
-            background: var(--title-color);
-            color: var(--card-bg);
-        }
 
         .tag { 
             display: inline-block; 
@@ -444,6 +445,24 @@
             display: inline-block; 
         }
 
+        #defaultHistoryToggle {
+            cursor: pointer;
+            padding: 12px;
+            background: var(--panel-bg);
+            text-align: center;
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--title-color);
+            transition: background 0.2s;
+        }
+
+        #defaultHistoryToggle:hover {
+            background: var(--card-hdr-bg);
+        }
+
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: var(--primary); }
         ::-webkit-scrollbar-thumb { background: var(--accent); }
@@ -455,6 +474,13 @@
     <div class="header-area">
         <h2>ME & EE Attendance</h2>
         <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Theme">🌓</button>
+    </div>
+
+    <!-- Login Box (Moved to Top) -->
+    <div class="login-footer" id="loginBox">
+        <p>Login to add or edit attendance</p>
+        <input type="password" id="adminPass" placeholder="••••••••" style="text-align: center; max-width: 200px; margin-bottom: 12px;"><br>
+        <button onclick="login()" style="padding: 10px 24px; border: none; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; cursor: pointer;">Admin Login</button>
     </div>
 
     <!-- Admin Panel -->
@@ -521,7 +547,42 @@
         <button type="button" class="btn-submit" id="mainSaveBtn" onclick="pushToCloud()">Finalize & Save</button>
     </div>
 
-    <!-- MODULE 1: DATA OPTIONS -->
+    <!-- MODULE 2: HISTORY VIEW (Moved Up) -->
+    <div class="section-box" style="margin-top: 0; border-top: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <h3 class="section-title" style="margin:0;">Attendance Logs History</h3>
+            <div style="display: flex; gap: 8px;">
+                <!-- New Subject Filter for History -->
+                <select id="filterHistorySubject" onchange="renderHistoryLogs()" style="max-width: 150px; padding: 5px; font-size: 12px; background: var(--input-bg); color: var(--text); border:1px solid var(--border);">
+                    <option value="">All Subjects</option>
+                    <option value="UHV (Universal Human Values)">UHV</option>
+                    <option value="Basic Electronics Engineering">Basic Electronics</option>
+                    <option value="Mechanics of Deformable Solids">MDS</option>
+                    <option value="Engineering Mechanics">Engg Mechanics</option>
+                    <option value="Mathematics-3">Maths-3</option>
+                    <option value="Applied Thermodynamics">ATD</option>
+                    <option value="Environmental Science">EVS</option>
+                    <option value="Mechanics of Deformable Solids Lab">MDS Lab</option>
+                    <option value="Engineering Mechanics Lab">EM Lab</option>
+                    <option value="Applied Thermodynamics Lab">ATD Lab</option>
+                    <option value="Basic Electronics Engineering Lab">BEE Lab</option>
+                    <option value="Seminar / Presentation">Seminar</option>
+                    <option value="Mentor / Mentee">Mentor/Mentee</option>
+                    <option value="Others">Others</option>
+                </select>
+                <input type="date" id="filterDate" onchange="renderHistoryLogs()" style="max-width: 120px; padding: 5px; font-size: 12px;">
+            </div>
+        </div>
+        
+        <!-- Toggle Button for Default View -->
+        <div id="defaultHistoryToggle" onclick="toggleDefaultHistory()">
+            <span id="historyArrow">▶</span> Show All History
+        </div>
+
+        <div id="logsView" style="color: var(--text-muted); text-align: center; padding: 10px 0; display: none;">Loading logs...</div>
+    </div>
+
+    <!-- MODULE 1: DATA OPTIONS (Moved Down) -->
     <div class="section-box">
         <h3 class="section-title">Data Extraction Options</h3>
         <div class="filter-row">
@@ -546,21 +607,6 @@
         </div>
     </div>
 
-    <!-- MODULE 2: HISTORY VIEW -->
-    <div class="section-box">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h3 class="section-title" style="margin:0;">Attendance Logs History</h3>
-            <input type="date" id="filterDate" onchange="renderHistoryLogs()" style="max-width: 150px; padding: 5px; font-size: 12px;">
-        </div>
-        <div id="logsView" style="color: var(--text-muted); text-align: center; padding: 10px 0;">Loading logs...</div>
-    </div>
-
-    <!-- Login Box -->
-    <div class="login-footer" id="loginBox">
-        <p>Login to add or edit attendance</p>
-        <input type="password" id="adminPass" placeholder="••••••••" style="text-align: center; max-width: 200px; margin-bottom: 12px;"><br>
-        <button onclick="login()" style="padding: 10px 24px; border: none; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; cursor: pointer;">Admin Login</button>
-    </div>
 </div>
 
 <script>
@@ -577,6 +623,7 @@
     const database = firebase.database();
 
     let highlightMode = 'id', isAdmin = false, editingKey = null, loadedPres = [], globalLogs = {};
+    let isHistoryExpanded = false; // For toggle behavior
     
     const meStudents = [
         {id: "B2555R10102001", name: "ABHISHEK KUMAR"}, {id: "B2555R10102002", name: "SANJEEV KUMAR"},
@@ -737,14 +784,46 @@
         });
     }
 
+    // Toggle Arrow Feature Function
+    function toggleDefaultHistory() {
+        isHistoryExpanded = !isHistoryExpanded;
+        const view = document.getElementById('logsView');
+        const arrow = document.getElementById('historyArrow');
+        
+        if (isHistoryExpanded) {
+            view.style.display = 'block';
+            arrow.innerText = '▼';
+        } else {
+            view.style.display = 'none';
+            arrow.innerText = '▶';
+        }
+    }
+
     function renderHistoryLogs() {
         const fDate = document.getElementById('filterDate').value;
+        const fSub = document.getElementById('filterHistorySubject').value;
         const view = document.getElementById('logsView');
+        const toggleBtn = document.getElementById('defaultHistoryToggle');
         
         let keys = Object.keys(globalLogs);
-        if(fDate) keys = keys.filter(k => globalLogs[k].date === fDate);
         
-        if(keys.length === 0) { view.innerHTML = "<div style='padding:15px;'>No records found in database.</div>"; return; }
+        // Filter Logic
+        if(fDate) keys = keys.filter(k => globalLogs[k].date === fDate);
+        if(fSub) keys = keys.filter(k => globalLogs[k].sub === fSub);
+        
+        // Show/Hide Toggle Button Logic based on Filters
+        if (!fDate && !fSub) {
+            toggleBtn.style.display = 'block';
+            view.style.display = isHistoryExpanded ? 'block' : 'none';
+        } else {
+            toggleBtn.style.display = 'none'; // Hide arrow toggle if searching
+            view.style.display = 'block';     // Force show results
+        }
+
+        if(keys.length === 0) { 
+            view.innerHTML = "<div style='padding:15px;'>No records found in database.</div>"; 
+            return; 
+        }
         
         view.innerHTML = keys.reverse().map(key => {
             const item = globalLogs[key];
@@ -861,7 +940,6 @@
         XLSX.writeFile(wb, "Attendance_Report_" + matrix.fSub.replace(/[^a-zA-Z0-9]/g, "_") + ".xlsx");
     }
 
-    // EXPANDED FULL-WIDTH PDF ENGINE (FILLS 100% HORIZONTAL SPACE + CLEARER FONTS)
     function exportFilteredToPDF() {
         try {
             const matrix = buildMatrixData();
@@ -880,14 +958,12 @@
 
             const { jsPDF } = window.jspdf;
             
-            // Native A4 Landscape Document
             const doc = new jsPDF({
                 orientation: 'landscape',
                 unit: 'mm',
                 format: 'a4'
             });
 
-            // 20 students partition chunking
             let chunks = [];
             for (let i = 0; i < meList.length; i += 20) {
                 chunks.push({ branch: "MECHANICAL ENGINEERING (ME)", students: meList.slice(i, i + 20) });
@@ -930,9 +1006,6 @@
                     return row;
                 });
 
-                // PROPORTIONALLY EXPANDED WIDTHS (Fills 289mm total printable A4 Landscape width)
-                // Total printable = 297mm width - 8mm total margins = 289mm
-                // 28mm (Roll No) + 53mm (Name) + 31 days * 6.7mm = 288.7mm
                 const colStyles = {
                     0: { cellWidth: 28, halign: 'left' },
                     1: { cellWidth: 53, halign: 'left', fontStyle: 'bold' }
@@ -948,8 +1021,8 @@
                     startY: 12,
                     margin: { top: 12, bottom: 4, left: 4, right: 4 },
                     styles: {
-                        fontSize: 7.8, // Bigger text for maximum legibility
-                        cellPadding: 1.8, // Comfortable padding
+                        fontSize: 7.8,
+                        cellPadding: 1.8,
                         lineWidth: 0.15,
                         lineColor: [40, 40, 40],
                         textColor: [0, 0, 0]
@@ -962,7 +1035,6 @@
                     },
                     columnStyles: colStyles,
                     didDrawPage: function(data) {
-                        // Title Header placed in space
                         doc.setFontSize(10);
                         doc.setFont(undefined, 'bold');
                         doc.text(`SUBJECT: ${matrix.fSub.toUpperCase()} | BRANCH: ${chunk.branch}`, 148, 7, { align: 'center' });
